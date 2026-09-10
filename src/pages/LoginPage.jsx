@@ -1,0 +1,123 @@
+import { useState } from 'react'
+import { LayoutDashboard, Mail, Lock, LogIn } from 'lucide-react'
+import { useDispatch, useSelector } from 'react-redux'
+import { setCredentials } from '../store'
+import API_URL from '../config'
+
+const LoginPage = ({ onLogin }) => {
+  const isDarkMode = useSelector((state) => state.auth.isDarkMode)
+  const dispatch = useDispatch()
+  
+  const [email, setEmail] = useState('admin@corp.com')
+  const [password, setPassword] = useState('123456')
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setLoading(true)
+    setError('')
+
+    try {
+      const response = await fetch(`${API_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        // Save token and user to localStorage
+        localStorage.setItem('token', data.token)
+        localStorage.setItem('user', JSON.stringify(data))
+        
+        // Save to Redux
+        dispatch(setCredentials({ user: data, token: data.token }))
+        
+        // Go to the Landing Page
+        onLogin()
+      } else {
+        setError(data.message || 'Invalid email or password')
+      }
+    } catch (error) {
+      setError('Failed to connect to server')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className={`min-h-screen flex items-center justify-center p-4 transition-colors duration-300 ${isDarkMode ? 'bg-slate-950' : 'bg-gray-50'}`}>
+      <div className={`w-full max-w-md rounded-2xl shadow-2xl border p-8 ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-200'}`}>
+        
+        {/* Logo */}
+        <div className="flex flex-col items-center mb-8">
+          <h1 className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>MealTrack</h1>
+          <p className={`text-sm mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Sign in to your account</p>
+        </div>
+
+        {/* Login Form */}
+        <form onSubmit={handleSubmit} className="space-y-6">
+          
+          {/* Email */}
+          <div className="flex flex-col gap-2">
+            <label className={`text-sm font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Email</label>
+            <div className="relative">
+              <Mail size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500" />
+              <input 
+                type="email" 
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className={`w-full border rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500 ${isDarkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'}`}
+              />
+            </div>
+          </div>
+
+          {/* Password */}
+          <div className="flex flex-col gap-2">
+            <label className={`text-sm font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Password</label>
+            <div className="relative">
+              <Lock size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500" />
+              <input 
+                type="password" 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className={`w-full border rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500 ${isDarkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'}`}
+              />
+            </div>
+          </div>
+
+          {/* Error Message */}
+          {error && (
+            <div className="bg-red-500/10 border border-red-500/20 text-red-500 text-sm rounded-lg p-3">
+              {error}
+            </div>
+          )}
+
+          {/* Submit Button */}
+          <button 
+            type="submit"
+            disabled={loading}
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm shadow-lg shadow-indigo-900/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {loading ? (
+              <span className="animate-spin border-2 border-white border-t-transparent rounded-full w-4 h-4"></span>
+            ) : (
+              <>
+                <LogIn size={18} />
+                Sign In
+              </>
+            )}
+          </button>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+export default LoginPage

@@ -1,0 +1,75 @@
+@import "tailwindcss";
+
+/* Fix white line on left edge (iPad Pro) */
+body {
+  background-color: #ffffff !important; 
+}
+
+.dark body {
+  background-color: #020617 !important; 
+}
+
+/* Hide the ugly default scrollbar on the whole page */
+* {
+  scrollbar-width: thin !important;
+}
+
+/* SIDEBAR SCROLLBAR - ALWAYS DARK */
+.nav-scroll {
+  scrollbar-color: #475569 transparent !important;
+  scrollbar-width: thin !important;
+}
+
+.nav-scroll::-webkit-scrollbar {
+  width: 4px !important;
+}
+
+.nav-scroll::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+.nav-scroll::-webkit-scrollbar-thumb {
+  background: #475569 !important;
+  border-radius: 4px !important;
+}
+
+.w-20 .nav-scroll::-webkit-scrollbar {
+  width: 0px !important;
+}
+
+/* GLOBAL SCROLLBAR FOR MODALS & PAGES (Light Mode) */
+.modal-scroll::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  width: 8px !important;
+}
+
+.modal-scroll::-webkit-scrollbar-track,
+body::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+.modal-scroll::-webkit-scrollbar-thumb,
+body::-webkit-scrollbar-thumb {
+  background: #c1c1c1 !important; /* Light Gray */
+  border-radius: 4px !important;
+}
+
+/* DARK MODE SCROLLBAR */
+.dark .modal-scroll::-webkit-scrollbar-thumb,
+.dark body::-webkit-scrollbar-thumb {
+  background: #334155 !important; /* Dark Slate */
+  border-radius: 4px !important;
+}
+
+/* Force the scrollbar to not appear on the right for sidebars */
+* {
+  scrollbar-color: #c1c1c1 transparent !important;
+}
+
+.dark * {
+  scrollbar-color: #334155 transparent !important;
+}
+
+
+
+
