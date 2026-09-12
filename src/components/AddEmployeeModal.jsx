@@ -3,12 +3,13 @@ import { X, User, Mail, Hash, Building2, UtensilsCrossed, Briefcase, CheckCircle
 import { useSelector, useDispatch } from 'react-redux'
 import { fetchSites } from '../store'
 import API_URL from '../config'
+import { showSuccess, showError } from '../utils/toast'
+import { logError } from '../utils/logger'
 
 const AddEmployeeModal = ({ isOpen, onClose }) => {
   const isDarkMode = useSelector((state) => state.auth.isDarkMode)
   const dispatch = useDispatch()
 
-  // Get real sites from Redux
   const { sites } = useSelector((state) => state.sites)
 
   const [formData, setFormData] = useState({
@@ -22,7 +23,6 @@ const AddEmployeeModal = ({ isOpen, onClose }) => {
     status: 'Active'
   })
 
-  // Fetch sites when modal opens
   useEffect(() => {
     if (isOpen) dispatch(fetchSites())
   }, [isOpen, dispatch])
@@ -69,16 +69,14 @@ const AddEmployeeModal = ({ isOpen, onClose }) => {
       const data = await response.json()
 
       if (response.ok) {
-        console.log('✅ Employee Created:', data)
+        showSuccess('Employee created successfully')
         onClose()
-        // No refresh! The page will update when you navigate back to Employees.
       } else {
-        console.error('❌ Error creating employee:', data.message)
-        alert(data.message || 'Failed to create employee')
+        showError(data.message || 'Failed to create employee')
       }
-    } catch (error) {
-      console.error('❌ Network error:', error)
-      alert('Failed to connect to server')
+    } catch (err) {
+      logError('Employee create failed:', err)
+      showError('Failed to connect to server')
     }
   }
 
@@ -137,7 +135,6 @@ const AddEmployeeModal = ({ isOpen, onClose }) => {
                 </div>
               </div>
 
-              {/* Mess Site - Uses Real Sites from Redux! */}
               <div className="flex flex-col gap-2">
                 <label className={`text-sm font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Mess Site</label>
                 <div className="relative">

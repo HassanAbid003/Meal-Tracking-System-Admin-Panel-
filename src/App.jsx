@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Toaster } from 'react-hot-toast'
 import LoginPage from './pages/LoginPage'
 import MainLayout from './layouts/MainLayout'
 import Dashboard from './components/Dashboard'
@@ -9,6 +10,7 @@ import Devices from './pages/Devices'
 import Departments from './pages/Departments'
 import Reports from './pages/Reports'
 import Permissions from './pages/Permissions'
+import { ConfirmProvider } from './context/ConfirmContext'
 import { useSelector, useDispatch } from 'react-redux'
 import { setCredentials } from './store'
 
@@ -16,9 +18,9 @@ function App() {
   const [activePage, setActivePage] = useState('Dashboard')
   const [isAuthenticated, setIsAuthenticated] = useState(false)
 
+  const isDarkMode = useSelector((state) => state.auth.isDarkMode)
   const dispatch = useDispatch()
 
-  // Check if user is already logged in (on page refresh)
   useEffect(() => {
     const token = localStorage.getItem('token')
     const user = localStorage.getItem('user')
@@ -29,13 +31,11 @@ function App() {
     }
   }, [dispatch])
 
-  // Handle Login Success
   const handleLogin = () => {
     setIsAuthenticated(true)
     setActivePage('Dashboard')
   }
 
-  // Handle Logout
   const handleLogout = () => {
     localStorage.removeItem('token')
     localStorage.removeItem('user')
@@ -43,12 +43,6 @@ function App() {
     setIsAuthenticated(false)
   }
 
-  // 1. Show Login Page if not authenticated
-  if (!isAuthenticated) {
-    return <LoginPage onLogin={handleLogin} />
-  }
-
-  // 2. Render the selected page
   const renderPage = () => {
     switch (activePage) {
       case 'Dashboard':
@@ -72,15 +66,52 @@ function App() {
     }
   }
 
-  // 3. Show Main Layout with selected page
   return (
-    <MainLayout
-      activePage={activePage}
-      setActivePage={setActivePage}
-      onLogout={handleLogout}
-    >
-      {renderPage()}
-    </MainLayout>
+    <ConfirmProvider>
+      <Toaster
+        position="top-center"
+        toastOptions={{
+          duration: 3000,
+          style: {
+            background: isDarkMode ? '#1e293b' : '#ffffff',
+            color: isDarkMode ? '#f1f5f9' : '#0f172a',
+            border: isDarkMode ? '1px solid #334155' : '1px solid #e5e7eb',
+            borderRadius: '12px',
+            padding: '12px 16px',
+            fontSize: '14px',
+            fontWeight: '500',
+            boxShadow: isDarkMode
+              ? '0 10px 25px -5px rgba(0, 0, 0, 0.5)'
+              : '0 10px 25px -5px rgba(0, 0, 0, 0.1)',
+          },
+          success: {
+            iconTheme: {
+              primary: '#10b981',
+              secondary: '#ffffff',
+            },
+          },
+          error: {
+            duration: 4500,
+            iconTheme: {
+              primary: '#ef4444',
+              secondary: '#ffffff',
+            },
+          },
+        }}
+      />
+
+      {!isAuthenticated ? (
+        <LoginPage onLogin={handleLogin} />
+      ) : (
+        <MainLayout
+          activePage={activePage}
+          setActivePage={setActivePage}
+          onLogout={handleLogout}
+        >
+          {renderPage()}
+        </MainLayout>
+      )}
+    </ConfirmProvider>
   )
 }
 

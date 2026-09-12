@@ -3,6 +3,8 @@ import { X, Clock, Sun, Moon, CheckCircle2 } from 'lucide-react'
 import { useSelector, useDispatch } from 'react-redux'
 import { fetchSites, fetchShifts } from '../store'
 import API_URL from '../config'
+import { showSuccess, showError } from '../utils/toast'
+import { logError } from '../utils/logger'
 
 const AddShiftModal = ({ isOpen, onClose }) => {
   const isDarkMode = useSelector((state) => state.auth.isDarkMode)
@@ -14,10 +16,9 @@ const AddShiftModal = ({ isOpen, onClose }) => {
     startTime: '',
     endTime: '',
     status: 'Active',
-    selectedSiteIds: [] 
+    selectedSiteIds: []
   })
 
-  // Fetch real sites from backend
   useEffect(() => {
     if (isOpen) dispatch(fetchSites())
   }, [isOpen, dispatch])
@@ -27,7 +28,6 @@ const AddShiftModal = ({ isOpen, onClose }) => {
     setFormData({ ...formData, [name]: value })
   }
 
-  // Toggle site selection
   const toggleSite = (siteId) => {
     setFormData(prev => ({
       ...prev,
@@ -39,9 +39,14 @@ const AddShiftModal = ({ isOpen, onClose }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+
+    if (formData.selectedSiteIds.length === 0) {
+      showError('Please select at least one site')
+      return
+    }
+
     const token = localStorage.getItem('token')
 
-    // Create shifts one by one
     for (const siteId of formData.selectedSiteIds) {
       try {
         const response = await fetch(`${API_URL}/api/shifts`, {
@@ -62,20 +67,19 @@ const AddShiftModal = ({ isOpen, onClose }) => {
         const data = await response.json()
 
         if (!response.ok) {
-          console.error('Shift create error:', data)
-          alert(data.message || 'Failed to create shift')
-          return // Stop if one fails
+          showError(data.message || 'Failed to create shift')
+          return
         }
-      } catch (error) {
-        console.error('Network error:', error)
-        alert('Failed to connect to server')
+      } catch (err) {
+        logError('Shift create failed:', err)
+        showError('Failed to connect to server')
         return
       }
     }
 
-    // AWAIT THE FETCH SO DATA IS THERE BEFORE UPDATING UI!
-    await dispatch(fetchShifts()) 
-    
+    await dispatch(fetchShifts())
+
+    showSuccess('Shift created successfully')
     onClose()
   }
 
@@ -86,7 +90,7 @@ const AddShiftModal = ({ isOpen, onClose }) => {
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose}></div>
 
       <div className={`relative w-full max-w-xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh] border ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-200'}`}>
-        
+
         <div className={`flex items-center justify-between px-6 py-3 border-b shrink-0 ${isDarkMode ? 'border-slate-800' : 'border-gray-200'}`}>
           <h2 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Add New Shift</h2>
           <button onClick={onClose} className={`p-1.5 rounded-lg transition-all ${isDarkMode ? 'text-gray-400 hover:text-white hover:bg-slate-800' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'}`}>
@@ -97,8 +101,7 @@ const AddShiftModal = ({ isOpen, onClose }) => {
         <div className="flex-1 overflow-y-auto px-6 py-4">
           <form id="shiftForm" onSubmit={handleSubmit}>
             <div className="space-y-4">
-              
-              {/* Shift Name */}
+
               <div className="flex flex-col gap-2">
                 <label className={`text-sm font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Shift Name</label>
                 <div className="relative">
@@ -111,7 +114,6 @@ const AddShiftModal = ({ isOpen, onClose }) => {
                 </div>
               </div>
 
-              {/* Start Time */}
               <div className="flex flex-col gap-2">
                 <label className={`text-sm font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Start Time</label>
                 <div className="relative">
@@ -120,7 +122,6 @@ const AddShiftModal = ({ isOpen, onClose }) => {
                 </div>
               </div>
 
-              {/* End Time */}
               <div className="flex flex-col gap-2">
                 <label className={`text-sm font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>End Time</label>
                 <div className="relative">
@@ -129,7 +130,6 @@ const AddShiftModal = ({ isOpen, onClose }) => {
                 </div>
               </div>
 
-              {/* Status */}
               <div className="flex flex-col gap-2">
                 <label className={`text-sm font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Status</label>
                 <div className="relative">
@@ -141,13 +141,12 @@ const AddShiftModal = ({ isOpen, onClose }) => {
                 </div>
               </div>
 
-              {/* Assign To Multiple Sites (Checkboxes) */}
               <div className="flex flex-col gap-2">
                 <label className={`text-sm font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Assign To Sites</label>
                 <div className={`border rounded-xl p-3 space-y-2 ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-gray-50 border-gray-200'}`}>
                   {sites.map((site) => (
                     <label key={site._id} className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-colors ${isDarkMode ? 'hover:bg-slate-700/50' : 'hover:bg-gray-100'}`}>
-                      <input 
+                      <input
                         type="checkbox"
                         className="w-4 h-4 text-indigo-600 cursor-pointer accent-indigo-600"
                         checked={formData.selectedSiteIds.includes(site._id)}

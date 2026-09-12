@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { X, Building2, Hash, User, CheckCircle2 } from 'lucide-react'
 import { useSelector } from 'react-redux'
 import API_URL from '../config'
+import { showSuccess, showError } from '../utils/toast'
+import { logError } from '../utils/logger'
 
 const EditSiteModal = ({ isOpen, onClose, site, onSave }) => {
   const isDarkMode = useSelector((state) => state.auth.isDarkMode)
@@ -46,13 +48,15 @@ const EditSiteModal = ({ isOpen, onClose, site, onSave }) => {
       const data = await response.json()
 
       if (response.ok) {
-        onSave(data) // Update Redux
+        onSave(data)
+        showSuccess('Site updated successfully')
         onClose()
       } else {
-        alert(data.message || 'Failed to update site')
+        showError(data.message || 'Failed to update site')
       }
-    } catch (error) {
-      alert('Failed to connect to server')
+    } catch (err) {
+      logError('Site update failed:', err)
+      showError('Failed to connect to server')
     }
   }
 

@@ -284,6 +284,27 @@ export const promoteEmployee = createAsyncThunk(
   }
 )
 
+export const resetUserPassword = createAsyncThunk(
+  'users/resetPassword',
+  async ({ userId, password }, { rejectWithValue }) => {
+    try {
+      const token = localStorage.getItem('token')
+      const response = await fetch(`${API_URL}/api/users/${userId}/password`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ password }),
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.message || 'Failed to reset password')
+      return data
+    } catch (error) {
+      return rejectWithValue(error.message)
+    }
+  }
+)
 // ====================================================
 // 3. SLICES
 // ====================================================
@@ -452,6 +473,14 @@ const usersSlice = createSlice({
         }
       })
       .addCase(promoteEmployee.rejected, (state, action) => { state.loading = false; state.error = action.payload })
+        // Reset password
+      .addCase(resetUserPassword.pending, (state) => { state.loading = true; state.error = null })
+      .addCase(resetUserPassword.fulfilled, (state, action) => {
+        state.loading = false
+        const index = state.users.findIndex(u => u._id === action.payload._id)
+        if (index !== -1) state.users[index] = action.payload
+      })
+      .addCase(resetUserPassword.rejected, (state, action) => { state.loading = false; state.error = action.payload })
   },
 })
 

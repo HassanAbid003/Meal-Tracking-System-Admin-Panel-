@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
-import { X, User, Mail, Hash, Building2, UtensilsCrossed, Briefcase, CheckCircle2, Printer, LayoutDashboard } from 'lucide-react'
+import { X, User, Mail, Hash, Building2, UtensilsCrossed, Briefcase, CheckCircle2, Printer } from 'lucide-react'
 import { useSelector, useDispatch } from 'react-redux'
-import { fetchSites } from '../store'
+import { fetchSites, updateEmployee } from '../store'
 import EmployeeQRCode from './EmployeeQRCode'
-import { updateEmployee } from '../store' 
 import API_URL from '../config'
+import { showSuccess, showError } from '../utils/toast'
+import { logError } from '../utils/logger'
 
 const EmployeeDetailsModal = ({ isOpen, onClose, employee, mode }) => {
   const isDarkMode = useSelector((state) => state.auth.isDarkMode)
@@ -37,7 +38,6 @@ const EmployeeDetailsModal = ({ isOpen, onClose, employee, mode }) => {
     }
   }, [employee])
 
-  // Fetch sites when modal opens
   useEffect(() => {
     if (isOpen) dispatch(fetchSites())
   }, [isOpen, dispatch])
@@ -74,34 +74,30 @@ const EmployeeDetailsModal = ({ isOpen, onClose, employee, mode }) => {
           },
           body: JSON.stringify(payload),
         })
-        
+
         const data = await response.json()
+
         if (response.ok) {
-          console.log('✅ Employee updated:', data)
-          
-          // UPDATE REDUX INSTANTLY (No page reload!)
           dispatch(updateEmployee(data))
-          
-          // Just close the modal
+          showSuccess('Employee updated successfully')
           onClose()
         } else {
-          alert(data.message || 'Failed to update employee')
+          showError(data.message || 'Failed to update employee')
         }
-      } catch (error) {
-        console.error('Error updating employee:', error)
-        alert('Failed to connect to server')
+      } catch (err) {
+        logError('Employee update failed:', err)
+        showError('Failed to connect to server')
       }
     } else {
       onClose()
     }
   }
 
-  // Print function using a new window (NO CSS HACKS)
   const handlePrint = () => {
     const qrContainer = document.getElementById('qr-image-print')
     const qrSvg = qrContainer.querySelector('svg')
     const printWindow = window.open('', '_blank', 'width=600,height=700')
-    
+
     printWindow.document.write(`
       <html>
         <head>
@@ -189,7 +185,6 @@ const EmployeeDetailsModal = ({ isOpen, onClose, employee, mode }) => {
                 </div>
               </div>
 
-              {/* Mess Site - Uses REAL Sites from Redux! */}
               <div className="flex flex-col gap-2">
                 <label className={`text-sm font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Mess Site</label>
                 <div className="relative">
@@ -248,13 +243,12 @@ const EmployeeDetailsModal = ({ isOpen, onClose, employee, mode }) => {
               </div>
             </div>
 
-            {/* QR CODE */}
             <div className="mt-6 flex flex-col items-center justify-center">
               <label className={`text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Employee QR Code</label>
               <div id="qr-image-print" className="bg-white p-3 rounded-xl border border-gray-200">
                 <EmployeeQRCode empId={formData.empId} size={180} />
               </div>
-              <button 
+              <button
                 type="button"
                 onClick={handlePrint}
                 className="mt-4 flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm rounded-xl shadow-md shadow-indigo-900/30 transition-all"

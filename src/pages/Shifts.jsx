@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
-import { Search, Plus, ChevronDown, Clock, MoreVertical, Check, Pencil, Sun, Moon, Coffee } from 'lucide-react'
+import { Plus, ChevronDown, Clock, Pencil, Sun, Moon, Coffee } from 'lucide-react'
 import AddShiftModal from '../components/AddShiftModal'
 import { useSelector, useDispatch } from 'react-redux'
 import { fetchShifts, toggleShift, updateShiftInStore } from '../store'
 import EditTimeModal from '../components/EditTimeModal'
 import API_URL from '../config'
+import { showSuccess, showError } from '../utils/toast'
+import { logError } from '../utils/logger'
 
 const DEFAULT_SHIFTS = [
   { name: 'Breakfast', icon: 'sun' },
@@ -12,14 +14,14 @@ const DEFAULT_SHIFTS = [
   { name: 'Dinner', icon: 'moon' },
 ]
 
-const Shifts = ({ }) => {
+const Shifts = () => {
   const isDarkMode = useSelector((state) => state.auth.isDarkMode)
   const { shifts, loading, error } = useSelector((state) => state.shifts)
   const { sites } = useSelector((state) => state.sites)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedSite, setSelectedSite] = useState('All Sites')
-  const [editingShift, setEditingShift] = useState(null) 
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false) 
+  const [editingShift, setEditingShift] = useState(null)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
 
   const dispatch = useDispatch()
 
@@ -32,8 +34,10 @@ const Shifts = ({ }) => {
     try {
       const updatedShift = await dispatch(toggleShift(shiftId)).unwrap()
       dispatch(updateShiftInStore(updatedShift))
-    } catch (error) {
-      alert('Failed to toggle shift')
+      showSuccess('Shift status updated')
+    } catch (err) {
+      logError('Shift toggle failed:', err)
+      showError('Failed to toggle shift')
     }
   }
 
@@ -42,44 +46,41 @@ const Shifts = ({ }) => {
     setIsEditModalOpen(true)
   }
 
-  // When user saves the times
-  const handleSaveTimes = async (shiftId, times) => {  
+  const handleSaveTimes = async (shiftId, times) => {
     try {
-      const token = localStorage.getItem('token');
-      
+      const token = localStorage.getItem('token')
+
       if (!token) {
-        throw new Error('Authentication required');
+        throw new Error('Authentication required')
       }
-          
-      const url = `${API_URL}/api/shifts/${shiftId}`;
-      
-      const response = await fetch(url, {
+
+      const response = await fetch(`${API_URL}/api/shifts/${shiftId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify(times),
-      });
-          
-      let data;
+      })
+
+      let data
       try {
-        data = await response.json();
+        data = await response.json()
       } catch (e) {
-        const text = await response.text();
-        throw new Error('Server returned invalid response');
+        throw new Error('Server returned invalid response')
       }
-      
+
       if (!response.ok) {
-        throw new Error(data.message || `HTTP error! status: ${response.status}`);
+        throw new Error(data.message || `HTTP error! status: ${response.status}`)
       }
-      
-      dispatch(updateShiftInStore(data));
-      
-    } catch (error) {
-      throw error;
+
+      dispatch(updateShiftInStore(data))
+      showSuccess('Shift times updated successfully')
+    } catch (err) {
+      logError('Shift update failed:', err)
+      throw err
     }
-  };
+  }
 
   const getShiftIcon = (icon) => {
     switch (icon) {
@@ -90,33 +91,31 @@ const Shifts = ({ }) => {
     }
   }
 
-  // Group shifts by site AND fill in the missing ones
   const groupedShifts = shifts.reduce((acc, shift) => {
     const siteId = shift.site_id?._id || shift.site_id
-    
+
     if (!acc[siteId]) {
       acc[siteId] = {
         site: shift.site_id || { name: 'Unknown', code: 'N/A' },
         shifts: []
       }
     }
-    
+
     const isDuplicate = acc[siteId].shifts.some(s => s.name === shift.name)
-    
+
     if (!isDuplicate) {
       acc[siteId].shifts.push(shift)
     }
-    
+
     return acc
   }, {})
 
   return (
     <div className={`min-h-screen p-4 md:p-4 transition-colors duration-300 ${isDarkMode ? 'bg-slate-950 text-white' : 'bg-gray-50 text-gray-900'}`}>
-      
-      {/* Top Bar */}
+
       <div className="flex flex-col md:flex-row items-stretch justify-between gap-4 mb-4">
         <div className="relative w-full md:w-34">
-          <select 
+          <select
             value={selectedSite}
             onChange={(e) => setSelectedSite(e.target.value)}
             className={`appearance-none w-full border rounded-xl pl-4 pr-10 py-1.5 text-sm focus:outline-none focus:border-indigo-500 cursor-pointer transition-colors ${
@@ -142,7 +141,7 @@ const Shifts = ({ }) => {
       ) : (
         <div className="space-y-4">
           {Object.entries(groupedShifts).map(([siteId, group]) => {
-            
+
             const filledShifts = DEFAULT_SHIFTS.map(defaultShift => {
               const realShift = group.shifts.find(s => s.name === defaultShift.name)
               return realShift ? { ...defaultShift, ...realShift } : { ...defaultShift, isPlaceholder: true }
@@ -150,8 +149,7 @@ const Shifts = ({ }) => {
 
             return (
               <div key={siteId} className={`rounded-xl border transition-colors duration-300 ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-200'}`}>
-                
-                {/* Site Header */}
+
                 <div className={`flex items-center justify-between px-6 py-4 border-b transition-colors duration-300 ${isDarkMode ? 'border-slate-800' : 'border-gray-200'}`}>
                   <div className="flex items-center gap-3">
                     <span className="w-2.5 h-2.5 rounded-full bg-green-500"></span>
@@ -161,11 +159,10 @@ const Shifts = ({ }) => {
                   <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{group.shifts.length} shifts</span>
                 </div>
 
-                {/* Shifts Grid */}
                 <div className={`grid grid-cols-1 md:grid-cols-3 transition-colors duration-300 ${isDarkMode ? 'border-slate-800' : 'border-gray-200'}`}>
                   {filledShifts.map((shift, index) => (
                     <div key={index} className={`py-4 px-6 border-r last:border-r-0 border-b md:border-b-0 transition-colors duration-300 ${isDarkMode ? 'border-slate-800' : 'border-gray-200'}`}>
-                      
+
                       {shift.isPlaceholder ? (
                         <div className="flex flex-col items-center justify-center h-full text-center py-8">
                           <div className={`p-3 rounded-xl mb-3 ${isDarkMode ? 'bg-slate-800' : 'bg-gray-50'}`}>
@@ -180,7 +177,7 @@ const Shifts = ({ }) => {
                             <div className={`p-3 rounded-xl ${isDarkMode ? 'bg-slate-800' : 'bg-gray-50'}`}>
                               {getShiftIcon(shift.icon)}
                             </div>
-                            
+
                             <div onClick={() => handleToggle(shift._id)} className={`w-12 h-6 rounded-full p-0.5 cursor-pointer flex items-center transition-colors duration-300 ${
                               shift.status === 'Active' ? 'bg-indigo-600 justify-end' : 'bg-gray-300 justify-start dark:bg-slate-700'
                             }`}>
@@ -198,7 +195,7 @@ const Shifts = ({ }) => {
 
                           <div className="flex items-center justify-between">
                             <span className={`text-xs font-semibold px-3 py-1 rounded-full ${
-                              shift.status === 'Active' 
+                              shift.status === 'Active'
                                 ? isDarkMode ? 'text-green-400 bg-green-500/10' : 'text-green-600 bg-green-50'
                                 : isDarkMode ? 'text-gray-400 bg-gray-500/10' : 'text-gray-500 bg-gray-100'
                             }`}>
