@@ -1,10 +1,26 @@
 import { useState, useEffect } from 'react'
-import { X, User, Mail, Hash, Building2, UtensilsCrossed, Briefcase, CheckCircle2 } from 'lucide-react'
+import { X, User, Mail, Hash, Building2, UtensilsCrossed, Briefcase, CheckCircle2, Phone, CreditCard, Image as ImageIcon, Upload } from 'lucide-react'
 import { useSelector, useDispatch } from 'react-redux'
 import { fetchSites } from '../store'
 import API_URL from '../config'
 import { showSuccess, showError } from '../utils/toast'
 import { logError } from '../utils/logger'
+
+const formatPhone = (value) => {
+  const digits = value.replace(/\D/g, '')
+  if (digits.length === 0) return ''
+  let rest = digits.startsWith('92') ? digits.slice(2) : digits.startsWith('0') ? digits.slice(1) : digits
+  rest = rest.slice(0, 10)
+  if (rest.length <= 3) return `+92 ${rest}`
+  return `+92 ${rest.slice(0, 3)}-${rest.slice(3)}`
+}
+
+const formatCnic = (value) => {
+  const digits = value.replace(/\D/g, '').slice(0, 13)
+  if (digits.length <= 5) return digits
+  if (digits.length <= 12) return `${digits.slice(0, 5)}-${digits.slice(5)}`
+  return `${digits.slice(0, 5)}-${digits.slice(5, 12)}-${digits.slice(12)}`
+}
 
 const AddEmployeeModal = ({ isOpen, onClose }) => {
   const isDarkMode = useSelector((state) => state.auth.isDarkMode)
@@ -20,15 +36,41 @@ const AddEmployeeModal = ({ isOpen, onClose }) => {
     site_id: '',
     shifts: [],
     role: 'Employee',
-    status: 'Active'
+    status: 'Active',
+    phone: '',
+    cnic: ''
   })
+
+  const [imageFile, setImageFile] = useState(null)
+  const [imagePreview, setImagePreview] = useState(null)
 
   useEffect(() => {
     if (isOpen) dispatch(fetchSites())
   }, [isOpen, dispatch])
 
+  useEffect(() => {
+    if (!isOpen) {
+      setImageFile(null)
+      setImagePreview(null)
+      setFormData({
+        name: '', email: '', empId: '', department: '', site_id: '',
+        shifts: [], role: 'Employee', status: 'Active', phone: '', cnic: ''
+      })
+    }
+  }, [isOpen])
+
   const handleChange = (e) => {
     const { name, value } = e.target
+
+    if (name === 'phone') {
+      setFormData({ ...formData, phone: formatPhone(value) })
+      return
+    }
+    if (name === 'cnic') {
+      setFormData({ ...formData, cnic: formatCnic(value) })
+      return
+    }
+
     setFormData({ ...formData, [name]: value })
   }
 
@@ -41,29 +83,54 @@ const AddEmployeeModal = ({ isOpen, onClose }) => {
     }))
   }
 
+  const handleImageChange = (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+
+    if (!['image/jpeg', 'image/jpg', 'image/png', 'image/webp'].includes(file.type)) {
+      showError('Only JPG, PNG, and WebP files are allowed')
+      return
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      showError('Image must be under 2MB')
+      return
+    }
+
+    setImageFile(file)
+    setImagePreview(URL.createObjectURL(file))
+  }
+
+  const handleRemoveImage = () => {
+    setImageFile(null)
+    if (imagePreview) URL.revokeObjectURL(imagePreview)
+    setImagePreview(null)
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     const token = localStorage.getItem('token')
 
-    const payload = {
-      empId: formData.empId,
-      name: formData.name,
-      email: formData.email,
-      department: formData.department,
-      site_id: formData.site_id,
-      shifts: formData.shifts,
-      role: formData.role,
-      status: formData.status
-    }
+    const payload = new FormData()
+    payload.append('empId', formData.empId)
+    payload.append('name', formData.name)
+    payload.append('email', formData.email)
+    payload.append('department', formData.department)
+    payload.append('site_id', formData.site_id)
+    payload.append('shifts', JSON.stringify(formData.shifts))
+    payload.append('role', formData.role)
+    payload.append('status', formData.status)
+    payload.append('phone', formData.phone)
+    payload.append('cnic', formData.cnic)
+    if (imageFile) payload.append('image', imageFile)
 
     try {
       const response = await fetch(`${API_URL}/api/employees`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify(payload),
+        body: payload,
       })
 
       const data = await response.json()
@@ -133,6 +200,51 @@ const AddEmployeeModal = ({ isOpen, onClose }) => {
                     <option value="Product Management">Product Management</option>
                   </select>
                 </div>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <label className={`text-sm font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Phone Number</label>
+                <div className="relative">
+                  <Phone size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500" />
+                  <input type="tel" name="phone" required placeholder="+92 300-1234567" value={formData.phone} onChange={handleChange} maxLength={17} className={`w-full border rounded-xl pl-10 pr-4 py-2.5 text-sm placeholder-gray-500 focus:outline-none focus:border-indigo-500 ${isDarkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'}`} />
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <label className={`text-sm font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>CNIC</label>
+                <div className="relative">
+                  <CreditCard size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500" />
+                  <input type="text" name="cnic" required placeholder="12345-6789012-3" value={formData.cnic} onChange={handleChange} maxLength={15} className={`w-full border rounded-xl pl-10 pr-4 py-2.5 text-sm placeholder-gray-500 focus:outline-none focus:border-indigo-500 ${isDarkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'}`} />
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2 md:col-span-2">
+                <label className={`text-sm font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Profile Image <span className="text-xs opacity-70">(optional, max 2MB)</span></label>
+
+                {!imagePreview ? (
+                  <label className={`flex items-center justify-center gap-3 border-2 border-dashed rounded-xl py-6 cursor-pointer transition-all ${isDarkMode ? 'border-slate-700 hover:border-indigo-500 hover:bg-slate-800/50' : 'border-gray-300 hover:border-indigo-500 hover:bg-gray-50'}`}>
+                    <Upload size={20} className="text-gray-500" />
+                    <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Click to upload image</span>
+                    <input type="file" accept="image/jpeg,image/jpg,image/png,image/webp" onChange={handleImageChange} className="hidden" />
+                  </label>
+                ) : (
+                  <div className={`flex items-center gap-4 border rounded-xl p-3 ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-gray-50 border-gray-200'}`}>
+                    <img src={imagePreview} alt="Preview" className="w-16 h-16 rounded-lg object-cover border border-gray-300 dark:border-slate-600" />
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-sm font-medium truncate ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{imageFile?.name}</p>
+                      <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{imageFile ? (imageFile.size / 1024).toFixed(1) + ' KB' : ''}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <label className={`px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-all ${isDarkMode ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-700'}`}>
+                        Change
+                        <input type="file" accept="image/jpeg,image/jpg,image/png,image/webp" onChange={handleImageChange} className="hidden" />
+                      </label>
+                      <button type="button" onClick={handleRemoveImage} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${isDarkMode ? 'bg-red-500/10 hover:bg-red-500/20 text-red-400' : 'bg-red-50 hover:bg-red-100 text-red-600'}`}>
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="flex flex-col gap-2">

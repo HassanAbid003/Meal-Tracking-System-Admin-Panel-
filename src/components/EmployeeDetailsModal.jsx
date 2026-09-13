@@ -1,11 +1,27 @@
 import { useState, useEffect } from 'react'
-import { X, User, Mail, Hash, Building2, UtensilsCrossed, Briefcase, CheckCircle2, Printer } from 'lucide-react'
+import { X, User, Mail, Hash, Building2, UtensilsCrossed, Briefcase, CheckCircle2, Printer, Phone, CreditCard, Upload } from 'lucide-react'
 import { useSelector, useDispatch } from 'react-redux'
 import { fetchSites, updateEmployee } from '../store'
 import EmployeeQRCode from './EmployeeQRCode'
 import API_URL from '../config'
 import { showSuccess, showError } from '../utils/toast'
 import { logError } from '../utils/logger'
+
+const formatPhone = (value) => {
+  const digits = value.replace(/\D/g, '')
+  if (digits.length === 0) return ''
+  let rest = digits.startsWith('92') ? digits.slice(2) : digits.startsWith('0') ? digits.slice(1) : digits
+  rest = rest.slice(0, 10)
+  if (rest.length <= 3) return `+92 ${rest}`
+  return `+92 ${rest.slice(0, 3)}-${rest.slice(3)}`
+}
+
+const formatCnic = (value) => {
+  const digits = value.replace(/\D/g, '').slice(0, 13)
+  if (digits.length <= 5) return digits
+  if (digits.length <= 12) return `${digits.slice(0, 5)}-${digits.slice(5)}`
+  return `${digits.slice(0, 5)}-${digits.slice(5, 12)}-${digits.slice(12)}`
+}
 
 const EmployeeDetailsModal = ({ isOpen, onClose, employee, mode }) => {
   const isDarkMode = useSelector((state) => state.auth.isDarkMode)
@@ -20,8 +36,14 @@ const EmployeeDetailsModal = ({ isOpen, onClose, employee, mode }) => {
     site_id: '',
     shifts: [],
     role: 'Employee',
-    status: 'Active'
+    status: 'Active',
+    phone: '',
+    cnic: ''
   })
+
+  const [imageFile, setImageFile] = useState(null)
+  const [imagePreview, setImagePreview] = useState(null)
+  const [removeImage, setRemoveImage] = useState(false)
 
   useEffect(() => {
     if (employee) {
@@ -33,8 +55,13 @@ const EmployeeDetailsModal = ({ isOpen, onClose, employee, mode }) => {
         site_id: employee.site_id ? employee.site_id._id : (employee.site_id || ''),
         shifts: employee.shifts || [],
         role: employee.role || 'Employee',
-        status: employee.status || 'Active'
+        status: employee.status || 'Active',
+        phone: employee.phone || '',
+        cnic: employee.cnic || ''
       })
+      setImageFile(null)
+      setImagePreview(employee.image ? `${API_URL}${employee.image}` : null)
+      setRemoveImage(false)
     }
   }, [employee])
 
@@ -44,6 +71,16 @@ const EmployeeDetailsModal = ({ isOpen, onClose, employee, mode }) => {
 
   const handleChange = (e) => {
     const { name, value } = e.target
+
+    if (name === 'phone') {
+      setFormData({ ...formData, phone: formatPhone(value) })
+      return
+    }
+    if (name === 'cnic') {
+      setFormData({ ...formData, cnic: formatCnic(value) })
+      return
+    }
+
     setFormData({ ...formData, [name]: value })
   }
 
@@ -56,23 +93,68 @@ const EmployeeDetailsModal = ({ isOpen, onClose, employee, mode }) => {
     }))
   }
 
+  const handleImageChange = (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+
+    if (!['image/jpeg', 'image/jpg', 'image/png', 'image/webp'].includes(file.type)) {
+      showError('Only JPG, PNG, and WebP files are allowed')
+      return
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      showError('Image must be under 2MB')
+      return
+    }
+
+    setImageFile(file)
+    if (imagePreview && !imagePreview.startsWith('http')) {
+      URL.revokeObjectURL(imagePreview)
+    }
+    setImagePreview(URL.createObjectURL(file))
+    setRemoveImage(false)
+  }
+
+  const handleRemoveImage = () => {
+    setImageFile(null)
+    if (imagePreview && !imagePreview.startsWith('http')) {
+      URL.revokeObjectURL(imagePreview)
+    }
+    setImagePreview(null)
+    setRemoveImage(true)
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (mode === 'edit' && employee) {
       try {
         const token = localStorage.getItem('token')
-        const payload = {
-          ...formData,
-          site_id: formData.site_id
+        const payload = new FormData()
+
+        payload.append('name', formData.name)
+        payload.append('email', formData.email)
+        payload.append('empId', formData.empId)
+        payload.append('department', formData.department)
+        payload.append('site_id', formData.site_id)
+        payload.append('shifts', JSON.stringify(formData.shifts))
+        payload.append('role', formData.role)
+        payload.append('status', formData.status)
+        payload.append('phone', formData.phone)
+        payload.append('cnic', formData.cnic)
+
+        if (imageFile) {
+          payload.append('image', imageFile)
+        }
+        if (removeImage) {
+          payload.append('removeImage', 'true')
         }
 
         const response = await fetch(`${API_URL}/api/employees/${employee._id}`, {
           method: 'PUT',
           headers: {
-            'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`,
           },
-          body: JSON.stringify(payload),
+          body: payload,
         })
 
         const data = await response.json()
@@ -93,10 +175,18 @@ const EmployeeDetailsModal = ({ isOpen, onClose, employee, mode }) => {
     }
   }
 
+  const getInitials = (name) => {
+    return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
+  }
+
   const handlePrint = () => {
     const qrContainer = document.getElementById('qr-image-print')
     const qrSvg = qrContainer.querySelector('svg')
     const printWindow = window.open('', '_blank', 'width=600,height=700')
+
+    const printImage = imagePreview
+      ? `<img src="${imagePreview}" style="width: 96px; height: 96px; border-radius: 50%; object-fit: cover; margin: 16px auto 8px; display: block;" />`
+      : ''
 
     printWindow.document.write(`
       <html>
@@ -107,7 +197,7 @@ const EmployeeDetailsModal = ({ isOpen, onClose, employee, mode }) => {
             .card { background: white; width: 350px; padding: 40px 30px; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); text-align: center; }
             .logo-box { width: 48px; height: 48px; background: #6366f1; border-radius: 12px; display: flex; justify-content: center; align-items: center; margin: 0 auto 16px; color: white; font-size: 24px; }
             .app-name { font-size: 18px; font-weight: 700; color: #0f172a; margin: 0 0 4px; }
-            .employee-name { font-size: 28px; font-weight: 700; color: #0f172a; margin: 24px 0 4px; }
+            .employee-name { font-size: 28px; font-weight: 700; color: #0f172a; margin: 8px 0 4px; }
             .employee-id { font-size: 14px; color: #64748b; margin: 0 0 2px; }
             .employee-dept { font-size: 12px; color: #94a3b8; margin: 0 0 24px; }
             .qr-border { border: 2px solid #e2e8f0; border-radius: 12px; padding: 16px; background: white; display: inline-block; }
@@ -118,6 +208,7 @@ const EmployeeDetailsModal = ({ isOpen, onClose, employee, mode }) => {
           <div class="card">
             <div class="logo-box">🍽️</div>
             <p class="app-name">MealTrack</p>
+            ${printImage}
             <p class="employee-name">${formData.name}</p>
             <p class="employee-id">${formData.empId}</p>
             <p class="employee-dept">${formData.department}</p>
@@ -152,6 +243,40 @@ const EmployeeDetailsModal = ({ isOpen, onClose, employee, mode }) => {
 
         <div className="flex-1 overflow-y-auto px-6 py-3">
           <form id="employeeDetailsForm" onSubmit={handleSubmit}>
+
+            <div className="flex flex-col items-center mb-6">
+              {imagePreview ? (
+                <img
+                  src={imagePreview}
+                  alt={formData.name}
+                  className={`w-24 h-24 rounded-full object-cover border-2 ${isDarkMode ? 'border-indigo-600/40' : 'border-indigo-200'}`}
+                />
+              ) : (
+                <div className={`w-24 h-24 rounded-full flex items-center justify-center text-2xl font-bold border-2 ${isDarkMode ? 'bg-indigo-600/20 border-indigo-600/40 text-indigo-400' : 'bg-indigo-50 border-indigo-200 text-indigo-600'}`}>
+                  {getInitials(formData.name || '?')}
+                </div>
+              )}
+
+              {!isViewMode && (
+                <div className="flex items-center gap-2 mt-3">
+                  <label className={`px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-all ${isDarkMode ? 'bg-slate-800 hover:bg-slate-700 text-white border border-slate-700' : 'bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-200'}`}>
+                    <Upload size={12} className="inline mr-1" />
+                    Change Photo
+                    <input type="file" accept="image/jpeg,image/jpg,image/png,image/webp" onChange={handleImageChange} className="hidden" />
+                  </label>
+                  {imagePreview && (
+                    <button
+                      type="button"
+                      onClick={handleRemoveImage}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${isDarkMode ? 'bg-red-500/10 hover:bg-red-500/20 text-red-400' : 'bg-red-50 hover:bg-red-100 text-red-600'}`}
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="flex flex-col gap-2">
                 <label className={`text-sm font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Full Name</label>
@@ -182,6 +307,22 @@ const EmployeeDetailsModal = ({ isOpen, onClose, employee, mode }) => {
                 <div className="relative">
                   <Building2 size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500" />
                   <input type="text" name="department" value={formData.department} onChange={handleChange} disabled={isViewMode} className={`w-full border rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500 ${isDarkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'} ${isViewMode ? 'opacity-60 cursor-not-allowed' : ''}`} />
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <label className={`text-sm font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Phone Number</label>
+                <div className="relative">
+                  <Phone size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500" />
+                  <input type="tel" name="phone" value={formData.phone} onChange={handleChange} disabled={isViewMode} placeholder="+92 300-1234567" maxLength={17} className={`w-full border rounded-xl pl-10 pr-4 py-2.5 text-sm placeholder-gray-500 focus:outline-none focus:border-indigo-500 ${isDarkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'} ${isViewMode ? 'opacity-60 cursor-not-allowed' : ''}`} />
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <label className={`text-sm font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>CNIC</label>
+                <div className="relative">
+                  <CreditCard size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500" />
+                  <input type="text" name="cnic" value={formData.cnic} onChange={handleChange} disabled={isViewMode} placeholder="12345-6789012-3" maxLength={15} className={`w-full border rounded-xl pl-10 pr-4 py-2.5 text-sm placeholder-gray-500 focus:outline-none focus:border-indigo-500 ${isDarkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'} ${isViewMode ? 'opacity-60 cursor-not-allowed' : ''}`} />
                 </div>
               </div>
 
