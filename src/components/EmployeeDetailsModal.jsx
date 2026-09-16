@@ -128,7 +128,6 @@ const EmployeeDetailsModal = ({ isOpen, onClose, employee, mode }) => {
     e.preventDefault()
     if (mode === 'edit' && employee) {
       try {
-        const token = localStorage.getItem('token')
         const payload = new FormData()
 
         payload.append('name', formData.name)
@@ -151,9 +150,7 @@ const EmployeeDetailsModal = ({ isOpen, onClose, employee, mode }) => {
 
         const response = await fetch(`${API_URL}/api/employees/${employee._id}`, {
           method: 'PUT',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
+          credentials: 'include',                        // ← add
           body: payload,
         })
 
@@ -174,7 +171,7 @@ const EmployeeDetailsModal = ({ isOpen, onClose, employee, mode }) => {
       onClose()
     }
   }
-
+  
   const getInitials = (name) => {
     return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
   }

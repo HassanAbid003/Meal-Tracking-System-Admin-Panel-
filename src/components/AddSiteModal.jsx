@@ -22,14 +22,13 @@ const AddSiteModal = ({ isOpen, onClose, onSiteCreated }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    const token = localStorage.getItem('token')
 
     try {
       const response = await fetch(`${API_URL}/api/sites`, {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify(formData),
       })
@@ -48,7 +47,6 @@ const AddSiteModal = ({ isOpen, onClose, onSiteCreated }) => {
       showError('Failed to connect to server')
     }
   }
-
   if (!isOpen) return null
 
   return (

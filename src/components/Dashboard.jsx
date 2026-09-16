@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
-import { fetchRecentScans, fetchSites, fetchEmployees, fetchDevices } from '../store' // <--- ADD ALL IMPORTS
+import { fetchRecentScans, fetchSites, fetchEmployees, fetchDevices } from '../store'
 import StatBox from './StatBox'
 import WeeklyMealChart from './charts/WeeklyMealChart'
 import SiteOverview from './SiteOverview'

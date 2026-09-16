@@ -33,14 +33,13 @@ const EditSiteModal = ({ isOpen, onClose, site, onSave }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    const token = localStorage.getItem('token')
 
     try {
       const response = await fetch(`${API_URL}/api/sites/${site._id}`, {
         method: 'PUT',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify(formData),
       })

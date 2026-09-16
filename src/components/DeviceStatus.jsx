@@ -1,21 +1,9 @@
-import { useEffect } from 'react'
-import { useSelector, useDispatch } from 'react-redux'
-import { fetchDevices } from '../store'
+import { useSelector } from 'react-redux'
 
 const DeviceStatus = ({ }) => {
   const isDarkMode = useSelector((state) => state.auth.isDarkMode)
-
-  // Get devices from Redux
   const { devices, loading, error } = useSelector((state) => state.devices)
-  
-  const dispatch = useDispatch()
 
-  // Fetch devices when page loads
-  useEffect(() => {
-    dispatch(fetchDevices())
-  }, [dispatch])
-
-  // Calculate online count
   const onlineCount = devices.filter(device => device.status === 'online').length
 
   return (

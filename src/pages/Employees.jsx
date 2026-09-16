@@ -5,6 +5,7 @@ import { Search, Plus, ChevronDown, Eye, Pencil, ChevronLeft, ChevronRight } fro
 import AddEmployeeModal from '../components/AddEmployeeModal'
 import EmployeeDetailsModal from '../components/EmployeeDetailsModal'
 import API_URL from '../config'
+import { useDebounce } from '../hooks/useDebounce'
 
 const PAGE_SIZE = 10
 
@@ -19,6 +20,7 @@ const Employees = () => {
   const [modalMode, setModalMode] = useState('view')
 
   const [searchTerm, setSearchTerm] = useState('')
+  const debouncedSearch = useDebounce(searchTerm, 300)
   const [selectedSite, setSelectedSite] = useState('All Sites')
   const [selectedDept, setSelectedDept] = useState('All Departments')
   const [selectedStatus, setSelectedStatus] = useState('All Status')
@@ -32,7 +34,7 @@ const Employees = () => {
 
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchTerm, selectedSite, selectedDept, selectedStatus])
+  }, [debouncedSearch, selectedSite, selectedDept, selectedStatus])
 
   const formattedEmployees = useMemo(() => {
     return employees.map(emp => {
@@ -49,10 +51,10 @@ const Employees = () => {
   const filteredEmployees = useMemo(() => {
     return formattedEmployees.filter(emp => {
       const matchesSearch =
-        emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        emp.empId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        emp.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        emp.siteName.toLowerCase().includes(searchTerm.toLowerCase())
+        emp.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+        emp.empId.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+        emp.email.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+        emp.siteName.toLowerCase().includes(debouncedSearch.toLowerCase())
 
       const matchesSite = selectedSite === 'All Sites' || emp.siteCode === selectedSite
       const matchesDept = selectedDept === 'All Departments' || emp.department === selectedDept
@@ -60,7 +62,7 @@ const Employees = () => {
 
       return matchesSearch && matchesSite && matchesDept && matchesStatus
     })
-  }, [formattedEmployees, searchTerm, selectedSite, selectedDept, selectedStatus])
+  }, [formattedEmployees, debouncedSearch, selectedSite, selectedDept, selectedStatus])
 
   const totalPages = Math.max(1, Math.ceil(filteredEmployees.length / PAGE_SIZE))
   const startIndex = (currentPage - 1) * PAGE_SIZE

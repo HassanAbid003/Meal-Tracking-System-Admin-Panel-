@@ -1,20 +1,9 @@
-import { useEffect } from 'react'
 import { Check, X } from 'lucide-react'
-import { useSelector, useDispatch } from 'react-redux'
-import { fetchRecentScans } from '../store'
+import { useSelector } from 'react-redux'
 
 const RecentScanActivity = ({ }) => {
   const isDarkMode = useSelector((state) => state.auth.isDarkMode)
-
-  // Get scans from Redux
   const { scans, loading, error } = useSelector((state) => state.scans)
-  
-  const dispatch = useDispatch()
-
-  // Fetch scans when page loads
-  useEffect(() => {
-    dispatch(fetchRecentScans())
-  }, [dispatch])
 
   return (
     <div className={`rounded-xl shadow-sm border flex flex-col transition-colors duration-300 ${

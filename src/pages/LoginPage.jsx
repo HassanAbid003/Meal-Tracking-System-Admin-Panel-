@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Mail, Lock, LogIn } from 'lucide-react'
 import { useDispatch, useSelector } from 'react-redux'
 import { setCredentials } from '../store'
@@ -16,11 +16,6 @@ const LoginPage = ({ onLogin }) => {
   const [loading, setLoading] = useState(false)
   const [isForgotOpen, setIsForgotOpen] = useState(false)
 
-  useEffect(() => {
-    setEmail('')
-    setPassword('')
-  }, [])
-
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
@@ -29,19 +24,16 @@ const LoginPage = ({ onLogin }) => {
     try {
       const response = await fetch(`${API_URL}/api/auth/login`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       })
 
       const data = await response.json()
 
       if (response.ok) {
-        localStorage.setItem('token', data.token)
-        localStorage.setItem('user', JSON.stringify(data))
-
-        dispatch(setCredentials({ user: data, token: data.token }))
+        // No more localStorage — cookie is set by the backend
+        dispatch(setCredentials({ user: data, token: 'cookie' }))
         onLogin()
       } else {
         setError(data.message || 'Invalid email or password')
@@ -97,11 +89,7 @@ const LoginPage = ({ onLogin }) => {
             <button
               type="button"
               onClick={() => setIsForgotOpen(true)}
-              className={`text-xs font-medium transition-colors ${
-                isDarkMode
-                  ? 'text-indigo-400 hover:text-indigo-300'
-                  : 'text-indigo-600 hover:text-indigo-500'
-              }`}
+              className={`text-xs font-medium transition-colors ${isDarkMode ? 'text-indigo-400 hover:text-indigo-300' : 'text-indigo-600 hover:text-indigo-500'}`}
             >
               Forgot password?
             </button>

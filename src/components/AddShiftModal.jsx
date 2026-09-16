@@ -45,15 +45,13 @@ const AddShiftModal = ({ isOpen, onClose }) => {
       return
     }
 
-    const token = localStorage.getItem('token')
-
     for (const siteId of formData.selectedSiteIds) {
       try {
         const response = await fetch(`${API_URL}/api/shifts`, {
           method: 'POST',
+          credentials: 'include',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
           },
           body: JSON.stringify({
             name: formData.name,

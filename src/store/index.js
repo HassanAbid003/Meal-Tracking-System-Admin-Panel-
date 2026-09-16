@@ -30,7 +30,6 @@ const authSlice = createSlice({
 // 2. ASYNC THUNKS
 // ====================================================
 
-// ---------- SITES ----------
 // ---------- AUTH: PASSWORD RESET ----------
 export const forgotPassword = createAsyncThunk(
   'auth/forgotPassword',
@@ -38,6 +37,7 @@ export const forgotPassword = createAsyncThunk(
     try {
       const response = await fetch(`${API_URL}/api/auth/forgot-password`, {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
       })
@@ -56,6 +56,7 @@ export const resetPassword = createAsyncThunk(
     try {
       const response = await fetch(`${API_URL}/api/auth/reset-password/${token}`, {
         method: 'PUT',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password }),
       })
@@ -68,14 +69,12 @@ export const resetPassword = createAsyncThunk(
   }
 )
 
+// ---------- SITES ----------
 export const fetchSites = createAsyncThunk('sites/fetchSites', async (_, { rejectWithValue }) => {
   try {
-    const token = localStorage.getItem('token')
     const response = await fetch(`${API_URL}/api/sites`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
     })
     const data = await response.json()
     if (!response.ok) throw new Error(data.message || 'Failed to fetch sites')
@@ -87,13 +86,10 @@ export const fetchSites = createAsyncThunk('sites/fetchSites', async (_, { rejec
 
 export const deleteSite = createAsyncThunk('sites/deleteSite', async (id, { rejectWithValue }) => {
   try {
-    const token = localStorage.getItem('token')
     const response = await fetch(`${API_URL}/api/sites/${id}`, {
       method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
     })
     const data = await response.json()
     if (!response.ok) throw new Error(data.message || 'Failed to delete site')
@@ -106,9 +102,9 @@ export const deleteSite = createAsyncThunk('sites/deleteSite', async (id, { reje
 // ---------- SHIFTS ----------
 export const fetchShifts = createAsyncThunk('shifts/fetchShifts', async (_, { rejectWithValue }) => {
   try {
-    const token = localStorage.getItem('token')
     const response = await fetch(`${API_URL}/api/shifts`, {
-      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
     })
     const data = await response.json()
     if (!response.ok) throw new Error(data.message || 'Failed to fetch shifts')
@@ -120,10 +116,10 @@ export const fetchShifts = createAsyncThunk('shifts/fetchShifts', async (_, { re
 
 export const toggleShift = createAsyncThunk('shifts/toggleShift', async (id, { rejectWithValue }) => {
   try {
-    const token = localStorage.getItem('token')
     const response = await fetch(`${API_URL}/api/shifts/${id}/toggle`, {
       method: 'PUT',
-      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
     })
     const data = await response.json()
     if (!response.ok) throw new Error(data.message || 'Failed to toggle shift')
@@ -136,12 +132,9 @@ export const toggleShift = createAsyncThunk('shifts/toggleShift', async (id, { r
 // ---------- DEVICES ----------
 export const fetchDevices = createAsyncThunk('devices/fetchDevices', async (_, { rejectWithValue }) => {
   try {
-    const token = localStorage.getItem('token')
     const response = await fetch(`${API_URL}/api/devices`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
     })
     const data = await response.json()
     if (!response.ok) throw new Error(data.message || 'Failed to fetch devices')
@@ -154,12 +147,9 @@ export const fetchDevices = createAsyncThunk('devices/fetchDevices', async (_, {
 // ---------- SCANS ----------
 export const fetchRecentScans = createAsyncThunk('scans/fetchRecentScans', async (_, { rejectWithValue }) => {
   try {
-    const token = localStorage.getItem('token')
     const response = await fetch(`${API_URL}/api/scan/recent`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
     })
     const data = await response.json()
     if (!response.ok) throw new Error(data.message || 'Failed to fetch scans')
@@ -172,12 +162,9 @@ export const fetchRecentScans = createAsyncThunk('scans/fetchRecentScans', async
 // ---------- EMPLOYEES ----------
 export const fetchEmployees = createAsyncThunk('employees/fetchEmployees', async (_, { rejectWithValue }) => {
   try {
-    const token = localStorage.getItem('token')
     const response = await fetch(`${API_URL}/api/employees`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
     })
     const data = await response.json()
     if (!response.ok) throw new Error(data.message || 'Failed to fetch employees')
@@ -192,9 +179,9 @@ export const fetchDepartments = createAsyncThunk(
   'departments/fetchDepartments',
   async (_, { rejectWithValue }) => {
     try {
-      const token = localStorage.getItem('token')
       const response = await fetch(`${API_URL}/api/departments`, {
-        headers: { 'Authorization': `Bearer ${token}` },
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
       })
       if (!response.ok) throw new Error('Failed to fetch departments')
       return await response.json()
@@ -208,13 +195,10 @@ export const createDepartment = createAsyncThunk(
   'departments/createDepartment',
   async (departmentData, { rejectWithValue }) => {
     try {
-      const token = localStorage.getItem('token')
       const response = await fetch(`${API_URL}/api/departments`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(departmentData),
       })
       if (!response.ok) {
@@ -233,7 +217,6 @@ export const fetchUsers = createAsyncThunk(
   'users/fetchUsers',
   async (filters = {}, { rejectWithValue }) => {
     try {
-      const token = localStorage.getItem('token')
       const params = new URLSearchParams()
       if (filters.search) params.append('search', filters.search)
       if (filters.role && filters.role !== 'All') params.append('role', filters.role)
@@ -241,10 +224,8 @@ export const fetchUsers = createAsyncThunk(
 
       const url = `${API_URL}/api/users${params.toString() ? '?' + params.toString() : ''}`
       const response = await fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
       })
       const data = await response.json()
       if (!response.ok) throw new Error(data.message || 'Failed to fetch users')
@@ -259,13 +240,10 @@ export const updateUserPermissions = createAsyncThunk(
   'users/updatePermissions',
   async ({ userId, permissions }, { rejectWithValue }) => {
     try {
-      const token = localStorage.getItem('token')
       const response = await fetch(`${API_URL}/api/users/${userId}/permissions`, {
         method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ permissions }),
       })
       const data = await response.json()
@@ -281,13 +259,10 @@ export const updateUserRole = createAsyncThunk(
   'users/updateRole',
   async ({ userId, role, site_id }, { rejectWithValue }) => {
     try {
-      const token = localStorage.getItem('token')
       const response = await fetch(`${API_URL}/api/users/${userId}/role`, {
         method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ role, site_id }),
       })
       const data = await response.json()
@@ -303,13 +278,10 @@ export const promoteEmployee = createAsyncThunk(
   'users/promoteEmployee',
   async ({ employeeId, role, site_id, password }, { rejectWithValue }) => {
     try {
-      const token = localStorage.getItem('token')
       const response = await fetch(`${API_URL}/api/users/promote`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ employeeId, role, site_id, password }),
       })
       const data = await response.json()
@@ -325,13 +297,10 @@ export const resetUserPassword = createAsyncThunk(
   'users/resetPassword',
   async ({ userId, password }, { rejectWithValue }) => {
     try {
-      const token = localStorage.getItem('token')
       const response = await fetch(`${API_URL}/api/users/${userId}/password`, {
         method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password }),
       })
       const data = await response.json()
@@ -342,6 +311,7 @@ export const resetUserPassword = createAsyncThunk(
     }
   }
 )
+
 // ====================================================
 // 3. SLICES
 // ====================================================
@@ -474,11 +444,9 @@ const usersSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      // Fetch users
       .addCase(fetchUsers.pending, (state) => { state.loading = true; state.error = null })
       .addCase(fetchUsers.fulfilled, (state, action) => { state.loading = false; state.users = action.payload })
       .addCase(fetchUsers.rejected, (state, action) => { state.loading = false; state.error = action.payload })
-      // Update permissions
       .addCase(updateUserPermissions.pending, (state) => { state.loading = true; state.error = null })
       .addCase(updateUserPermissions.fulfilled, (state, action) => {
         state.loading = false
@@ -486,7 +454,6 @@ const usersSlice = createSlice({
         if (index !== -1) state.users[index] = action.payload
       })
       .addCase(updateUserPermissions.rejected, (state, action) => { state.loading = false; state.error = action.payload })
-      // Update role
       .addCase(updateUserRole.pending, (state) => { state.loading = true; state.error = null })
       .addCase(updateUserRole.fulfilled, (state, action) => {
         state.loading = false
@@ -498,7 +465,6 @@ const usersSlice = createSlice({
         }
       })
       .addCase(updateUserRole.rejected, (state, action) => { state.loading = false; state.error = action.payload })
-      // Promote employee
       .addCase(promoteEmployee.pending, (state) => { state.loading = true; state.error = null })
       .addCase(promoteEmployee.fulfilled, (state, action) => {
         state.loading = false
@@ -510,7 +476,6 @@ const usersSlice = createSlice({
         }
       })
       .addCase(promoteEmployee.rejected, (state, action) => { state.loading = false; state.error = action.payload })
-        // Reset password
       .addCase(resetUserPassword.pending, (state) => { state.loading = true; state.error = null })
       .addCase(resetUserPassword.fulfilled, (state, action) => {
         state.loading = false

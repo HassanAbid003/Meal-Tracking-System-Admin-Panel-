@@ -48,17 +48,11 @@ const Shifts = () => {
 
   const handleSaveTimes = async (shiftId, times) => {
     try {
-      const token = localStorage.getItem('token')
-
-      if (!token) {
-        throw new Error('Authentication required')
-      }
-
       const response = await fetch(`${API_URL}/api/shifts/${shiftId}`, {
         method: 'PUT',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify(times),
       })

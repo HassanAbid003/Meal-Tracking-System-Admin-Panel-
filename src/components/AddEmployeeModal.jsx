@@ -109,7 +109,6 @@ const AddEmployeeModal = ({ isOpen, onClose }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    const token = localStorage.getItem('token')
 
     const payload = new FormData()
     payload.append('empId', formData.empId)
@@ -127,14 +126,11 @@ const AddEmployeeModal = ({ isOpen, onClose }) => {
     try {
       const response = await fetch(`${API_URL}/api/employees`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+        credentials: 'include',                        // ← add
         body: payload,
       })
 
       const data = await response.json()
-
       if (response.ok) {
         showSuccess('Employee created successfully')
         onClose()
