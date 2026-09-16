@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import LoginPage from './pages/LoginPage'
+import ResetPasswordPage from './pages/ResetPasswordPage'
 import MainLayout from './layouts/MainLayout'
 import Dashboard from './components/Dashboard'
 import MessSites from './pages/MessSites'
@@ -100,17 +102,27 @@ function App() {
         }}
       />
 
-      {!isAuthenticated ? (
-        <LoginPage onLogin={handleLogin} />
-      ) : (
-        <MainLayout
-          activePage={activePage}
-          setActivePage={setActivePage}
-          onLogout={handleLogout}
-        >
-          {renderPage()}
-        </MainLayout>
-      )}
+      <BrowserRouter>
+        <Routes>
+          <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
+          <Route
+            path="*"
+            element={
+              !isAuthenticated ? (
+                <LoginPage onLogin={handleLogin} />
+              ) : (
+                <MainLayout
+                  activePage={activePage}
+                  setActivePage={setActivePage}
+                  onLogout={handleLogout}
+                >
+                  {renderPage()}
+                </MainLayout>
+              )
+            }
+          />
+        </Routes>
+      </BrowserRouter>
     </ConfirmProvider>
   )
 }

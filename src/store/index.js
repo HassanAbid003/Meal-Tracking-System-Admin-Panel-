@@ -31,6 +31,43 @@ const authSlice = createSlice({
 // ====================================================
 
 // ---------- SITES ----------
+// ---------- AUTH: PASSWORD RESET ----------
+export const forgotPassword = createAsyncThunk(
+  'auth/forgotPassword',
+  async ({ email }, { rejectWithValue }) => {
+    try {
+      const response = await fetch(`${API_URL}/api/auth/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.message || 'Failed to send reset email')
+      return data
+    } catch (error) {
+      return rejectWithValue(error.message)
+    }
+  }
+)
+
+export const resetPassword = createAsyncThunk(
+  'auth/resetPassword',
+  async ({ token, password }, { rejectWithValue }) => {
+    try {
+      const response = await fetch(`${API_URL}/api/auth/reset-password/${token}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.message || 'Failed to reset password')
+      return data
+    } catch (error) {
+      return rejectWithValue(error.message)
+    }
+  }
+)
+
 export const fetchSites = createAsyncThunk('sites/fetchSites', async (_, { rejectWithValue }) => {
   try {
     const token = localStorage.getItem('token')

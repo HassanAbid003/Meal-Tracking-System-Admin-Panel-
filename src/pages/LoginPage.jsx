@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { setCredentials } from '../store'
 import API_URL from '../config'
 import { logError } from '../utils/logger'
+import ForgotPasswordModal from '../components/ForgotPasswordModal'
 
 const LoginPage = ({ onLogin }) => {
   const isDarkMode = useSelector((state) => state.auth.isDarkMode)
@@ -13,6 +14,7 @@ const LoginPage = ({ onLogin }) => {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [isForgotOpen, setIsForgotOpen] = useState(false)
 
   useEffect(() => {
     setEmail('')
@@ -50,10 +52,6 @@ const LoginPage = ({ onLogin }) => {
     } finally {
       setLoading(false)
     }
-  }
-
-  const handleForgotPassword = () => {
-    // TODO: Add forgot password functionality
   }
 
   return (
@@ -98,7 +96,7 @@ const LoginPage = ({ onLogin }) => {
           <div className="flex justify-end -mt-2">
             <button
               type="button"
-              onClick={handleForgotPassword}
+              onClick={() => setIsForgotOpen(true)}
               className={`text-xs font-medium transition-colors ${
                 isDarkMode
                   ? 'text-indigo-400 hover:text-indigo-300'
@@ -131,6 +129,11 @@ const LoginPage = ({ onLogin }) => {
           </button>
         </form>
       </div>
+
+      <ForgotPasswordModal
+        isOpen={isForgotOpen}
+        onClose={() => setIsForgotOpen(false)}
+      />
     </div>
   )
 }
