@@ -1,13 +1,12 @@
 import { useState, useEffect } from 'react'
 import { X, Monitor, Hash, CheckCircle2, RefreshCw } from 'lucide-react'
 import { useSelector, useDispatch } from 'react-redux'
-import { createDevice, clearDevicesError } from '../store'
+import { updateDevice, clearDevicesError } from '../store'
 import { showSuccess, showError } from '../utils/toast'
 import { logError } from '../utils/logger'
 
-const RegisterDeviceModal = ({ isOpen, onClose, sites = [] }) => {
+const EditDeviceModal = ({ isOpen, onClose, device, sites = [] }) => {
   const isDarkMode = useSelector((state) => state.auth.isDarkMode)
-  const { loading } = useSelector((state) => state.devices)
   const dispatch = useDispatch()
 
   const [formData, setFormData] = useState({
@@ -19,11 +18,16 @@ const RegisterDeviceModal = ({ isOpen, onClose, sites = [] }) => {
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
-    if (isOpen) {
-      setFormData({ name: '', serial: '', status: 'Online', assignedSite: '' })
+    if (isOpen && device) {
+      setFormData({
+        name: device.name || '',
+        serial: device.serial || '',
+        status: device.status === 'online' ? 'Online' : 'Offline',
+        assignedSite: device.site_id?._id || device.site_id || '',
+      })
       dispatch(clearDevicesError())
     }
-  }, [isOpen, dispatch])
+  }, [isOpen, device, dispatch])
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -36,15 +40,17 @@ const RegisterDeviceModal = ({ isOpen, onClose, sites = [] }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!formData.name.trim() || !formData.serial.trim() || !formData.assignedSite) {
-      showError('Please fill all fields and select a site')
+    if (!device) return
+    if (!formData.name.trim() || !formData.serial.trim()) {
+      showError('Name and serial are required')
       return
     }
 
     setSubmitting(true)
     try {
       await dispatch(
-        createDevice({
+        updateDevice({
+          id: device._id,
           name: formData.name.trim(),
           serial: formData.serial.trim().toUpperCase(),
           site_id: formData.assignedSite,
@@ -52,17 +58,17 @@ const RegisterDeviceModal = ({ isOpen, onClose, sites = [] }) => {
         })
       ).unwrap()
 
-      showSuccess('Device registered successfully')
+      showSuccess('Device updated')
       onClose()
     } catch (err) {
-      logError('Register device failed:', err)
-      showError(err || 'Failed to register device')
+      logError('Update device failed:', err)
+      showError(err || 'Failed to update device')
     } finally {
       setSubmitting(false)
     }
   }
 
-  if (!isOpen) return null
+  if (!isOpen || !device) return null
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -71,7 +77,7 @@ const RegisterDeviceModal = ({ isOpen, onClose, sites = [] }) => {
       <div className={`relative w-full max-w-lg rounded-2xl shadow-2xl flex flex-col max-h-[90vh] border ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-200'}`}>
 
         <div className={`flex items-center justify-between px-6 py-3 border-b shrink-0 ${isDarkMode ? 'border-slate-800' : 'border-gray-200'}`}>
-          <h2 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Register Device</h2>
+          <h2 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Configure Device</h2>
           <button
             onClick={onClose}
             disabled={submitting}
@@ -82,7 +88,7 @@ const RegisterDeviceModal = ({ isOpen, onClose, sites = [] }) => {
         </div>
 
         <div className="flex-1 overflow-y-auto px-6 py-3">
-          <form id="deviceForm" onSubmit={handleSubmit}>
+          <form id="editDeviceForm" onSubmit={handleSubmit}>
             <div className="space-y-5">
 
               <div className="flex flex-col gap-2">
@@ -93,11 +99,10 @@ const RegisterDeviceModal = ({ isOpen, onClose, sites = [] }) => {
                     type="text"
                     name="name"
                     required
-                    placeholder="e.g. Scanner Alpha"
                     value={formData.name}
                     onChange={handleChange}
                     disabled={submitting}
-                    className={`w-full border rounded-xl pl-10 pr-4 py-2.5 text-sm placeholder-gray-500 focus:outline-none focus:border-indigo-500 disabled:opacity-60 ${isDarkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'}`}
+                    className={`w-full border rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500 disabled:opacity-60 ${isDarkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'}`}
                   />
                 </div>
               </div>
@@ -110,11 +115,10 @@ const RegisterDeviceModal = ({ isOpen, onClose, sites = [] }) => {
                     type="text"
                     name="serial"
                     required
-                    placeholder="e.g. QRS-2024-007"
                     value={formData.serial}
                     onChange={handleChange}
                     disabled={submitting}
-                    className={`w-full border rounded-xl pl-10 pr-4 py-2.5 text-sm placeholder-gray-500 focus:outline-none focus:border-indigo-500 font-mono disabled:opacity-60 ${isDarkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'}`}
+                    className={`w-full border rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500 font-mono disabled:opacity-60 ${isDarkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'}`}
                   />
                 </div>
               </div>
@@ -137,7 +141,7 @@ const RegisterDeviceModal = ({ isOpen, onClose, sites = [] }) => {
               </div>
 
               <div className="flex flex-col gap-2">
-                <label className={`text-sm font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Assign To Site</label>
+                <label className={`text-sm font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Assigned Site</label>
                 <div className={`border rounded-xl p-3 space-y-1 max-h-48 overflow-y-auto ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-gray-50 border-gray-200'}`}>
                   {sites.length === 0 ? (
                     <p className={`text-sm text-center py-3 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>No sites available</p>
@@ -179,19 +183,19 @@ const RegisterDeviceModal = ({ isOpen, onClose, sites = [] }) => {
           </button>
           <button
             type="submit"
-            form="deviceForm"
+            form="editDeviceForm"
             disabled={submitting}
             className="flex items-center gap-2 px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm shadow-lg shadow-indigo-900/30 transition-all disabled:opacity-50"
           >
             {submitting ? (
               <>
                 <RefreshCw size={16} className="animate-spin" />
-                Registering...
+                Saving...
               </>
             ) : (
               <>
                 <CheckCircle2 size={16} />
-                Register Device
+                Save Changes
               </>
             )}
           </button>
@@ -201,4 +205,4 @@ const RegisterDeviceModal = ({ isOpen, onClose, sites = [] }) => {
   )
 }
 
-export default RegisterDeviceModal
+export default EditDeviceModal

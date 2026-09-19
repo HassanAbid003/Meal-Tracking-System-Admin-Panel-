@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { X, Eye, EyeOff, RefreshCw, CheckCircle2, Mail, Lock } from 'lucide-react'
+import { X, Eye, EyeOff, RefreshCw, CheckCircle2, Mail, Lock, Monitor, ShieldCheck, QrCode } from 'lucide-react'
 import { useSelector } from 'react-redux'
 
 const generatePassword = () => {
@@ -11,16 +11,28 @@ const generatePassword = () => {
   return password
 }
 
-const PromoteEmployeeModal = ({ isOpen, onClose, employee, onPromote, isPromoting }) => {
+const PromoteEmployeeModal = ({
+  isOpen,
+  onClose,
+  employee,
+  onPromote,
+  isPromoting,
+  devices = [],         // ← list of devices for the selected site
+  loadingDevices = false,
+}) => {
   const isDarkMode = useSelector((state) => state.auth.isDarkMode)
 
+  const [role, setRole] = useState('site_admin') // 'site_admin' | 'mess_keeper'
   const [password, setPassword] = useState('password123')
   const [showPassword, setShowPassword] = useState(false)
+  const [deviceSerial, setDeviceSerial] = useState('')
 
   useEffect(() => {
     if (employee) {
+      setRole('site_admin')
       setPassword('password123')
       setShowPassword(false)
+      setDeviceSerial('')
     }
   }, [employee])
 
@@ -31,13 +43,19 @@ const PromoteEmployeeModal = ({ isOpen, onClose, employee, onPromote, isPromotin
   const handleSubmit = (e) => {
     e.preventDefault()
     if (!isValid) return
-    onPromote({ password })
+    onPromote({
+      password,
+      role,
+      device_serial: role === 'mess_keeper' ? (deviceSerial || null) : null,
+    })
   }
 
   const handleGenerate = () => {
     setPassword(generatePassword())
     setShowPassword(true)
   }
+
+  const isMessKeeper = role === 'mess_keeper'
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
@@ -47,7 +65,7 @@ const PromoteEmployeeModal = ({ isOpen, onClose, employee, onPromote, isPromotin
 
         <div className={`flex items-center justify-between px-5 py-3 border-b ${isDarkMode ? 'border-slate-800' : 'border-gray-200'}`}>
           <h3 className={`text-base font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-            Promote to Site Admin
+            Promote Employee
           </h3>
           <button
             onClick={onClose}
@@ -60,6 +78,47 @@ const PromoteEmployeeModal = ({ isOpen, onClose, employee, onPromote, isPromotin
 
         <form onSubmit={handleSubmit} className="px-5 py-4 space-y-4">
 
+          {/* Role toggle */}
+          <div>
+            <label className={`block text-xs font-semibold uppercase mb-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+              Promote To
+            </label>
+            <div className={`grid grid-cols-2 gap-2 p-1 rounded-xl ${isDarkMode ? 'bg-slate-800' : 'bg-gray-100'}`}>
+              <button
+                type="button"
+                onClick={() => setRole('site_admin')}
+                disabled={isPromoting}
+                className={`flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all disabled:opacity-60 ${
+                  role === 'site_admin'
+                    ? 'bg-indigo-600 text-white shadow'
+                    : isDarkMode ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'
+                }`}
+              >
+                <ShieldCheck size={14} />
+                Site Admin
+              </button>
+              <button
+                type="button"
+                onClick={() => setRole('mess_keeper')}
+                disabled={isPromoting}
+                className={`flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all disabled:opacity-60 ${
+                  role === 'mess_keeper'
+                    ? 'bg-amber-600 text-white shadow'
+                    : isDarkMode ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'
+                }`}
+              >
+                <QrCode size={14} />
+                Mess Keeper
+              </button>
+            </div>
+            <p className={`text-xs mt-1.5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+              {isMessKeeper
+                ? 'Mess Keepers log into the mobile scanner app only.'
+                : 'Site Admins get web dashboard access.'}
+            </p>
+          </div>
+
+          {/* Email (readonly) */}
           <div>
             <label className={`block text-xs font-semibold uppercase mb-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
               Email
@@ -75,6 +134,7 @@ const PromoteEmployeeModal = ({ isOpen, onClose, employee, onPromote, isPromotin
             </div>
           </div>
 
+          {/* Password */}
           <div>
             <label className={`block text-xs font-semibold uppercase mb-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
               Password
@@ -114,6 +174,38 @@ const PromoteEmployeeModal = ({ isOpen, onClose, employee, onPromote, isPromotin
             )}
           </div>
 
+          {/* Device serial — only for Mess Keeper */}
+          {isMessKeeper && (
+            <div>
+              <label className={`block text-xs font-semibold uppercase mb-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                Device (optional)
+              </label>
+              <div className="relative">
+                <Monitor size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none z-10" />
+                <select
+                  value={deviceSerial}
+                  onChange={(e) => setDeviceSerial(e.target.value)}
+                  disabled={isPromoting || loadingDevices}
+                  className={`w-full appearance-none border rounded-xl pl-10 pr-10 py-2.5 text-sm focus:outline-none focus:border-amber-500 disabled:opacity-60 cursor-pointer ${
+                    isDarkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'
+                  }`}
+                >
+                  <option value="">
+                    {loadingDevices ? 'Loading devices...' : '— Let tablet pick on first launch —'}
+                  </option>
+                  {devices.map((d) => (
+                    <option key={d._id} value={d.serial}>
+                      {d.serial} — {d.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <p className={`text-xs mt-1.5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                Leave blank to let the Mess Keeper pick a device when they first open the app.
+              </p>
+            </div>
+          )}
+
         </form>
 
         <div className={`flex items-center justify-end gap-3 border-t px-5 py-3 ${isDarkMode ? 'border-slate-800' : 'border-gray-200'}`}>
@@ -129,7 +221,9 @@ const PromoteEmployeeModal = ({ isOpen, onClose, employee, onPromote, isPromotin
             type="button"
             onClick={handleSubmit}
             disabled={!isValid || isPromoting}
-            className="flex items-center gap-2 px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+            className={`flex items-center gap-2 px-5 py-2 rounded-xl text-white font-semibold text-sm shadow-lg disabled:opacity-50 disabled:cursor-not-allowed ${
+              isMessKeeper ? 'bg-amber-600 hover:bg-amber-700' : 'bg-indigo-600 hover:bg-indigo-700'
+            }`}
           >
             {isPromoting ? (
               <>

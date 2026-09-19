@@ -130,6 +130,7 @@ export const toggleShift = createAsyncThunk('shifts/toggleShift', async (id, { r
 })
 
 // ---------- DEVICES ----------
+// ---------- DEVICES ----------
 export const fetchDevices = createAsyncThunk('devices/fetchDevices', async (_, { rejectWithValue }) => {
   try {
     const response = await fetch(`${API_URL}/api/devices`, {
@@ -143,6 +144,62 @@ export const fetchDevices = createAsyncThunk('devices/fetchDevices', async (_, {
     return rejectWithValue(error.message)
   }
 })
+
+export const createDevice = createAsyncThunk(
+  'devices/createDevice',
+  async ({ name, serial, site_id, status }, { rejectWithValue }) => {
+    try {
+      const response = await fetch(`${API_URL}/api/devices`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, serial, site_id, status: status?.toLowerCase() || 'online' }),
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.message || 'Failed to create device')
+      return data
+    } catch (error) {
+      return rejectWithValue(error.message)
+    }
+  }
+)
+
+export const updateDevice = createAsyncThunk(
+  'devices/updateDevice',
+  async ({ id, name, serial, site_id, status }, { rejectWithValue }) => {
+    try {
+      const response = await fetch(`${API_URL}/api/devices/${id}`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, serial, site_id, status: status?.toLowerCase() }),
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.message || 'Failed to update device')
+      return data
+    } catch (error) {
+      return rejectWithValue(error.message)
+    }
+  }
+)
+
+export const deleteDevice = createAsyncThunk(
+  'devices/deleteDevice',
+  async (id, { rejectWithValue }) => {
+    try {
+      const response = await fetch(`${API_URL}/api/devices/${id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.message || 'Failed to delete device')
+      return id
+    } catch (error) {
+      return rejectWithValue(error.message)
+    }
+  }
+)
 
 // ---------- SCANS ----------
 export const fetchRecentScans = createAsyncThunk('scans/fetchRecentScans', async (_, { rejectWithValue }) => {
@@ -159,6 +216,22 @@ export const fetchRecentScans = createAsyncThunk('scans/fetchRecentScans', async
   }
 })
 
+export const fetchWeeklyStats = createAsyncThunk(
+  'scans/fetchWeeklyStats',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await fetch(`${API_URL}/api/scan/stats/weekly`, {
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.message || 'Failed to fetch weekly stats')
+      return data
+    } catch (error) {
+      return rejectWithValue(error.message)
+    }
+  }
+)
 // ---------- EMPLOYEES ----------
 export const fetchEmployees = createAsyncThunk('employees/fetchEmployees', async (_, { rejectWithValue }) => {
   try {
@@ -276,13 +349,13 @@ export const updateUserRole = createAsyncThunk(
 
 export const promoteEmployee = createAsyncThunk(
   'users/promoteEmployee',
-  async ({ employeeId, role, site_id, password }, { rejectWithValue }) => {
+  async ({ employeeId, role, site_id, password, device_serial }, { rejectWithValue }) => {
     try {
       const response = await fetch(`${API_URL}/api/users/promote`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ employeeId, role, site_id, password }),
+        body: JSON.stringify({ employeeId, role, site_id, password, device_serial }),
       })
       const data = await response.json()
       if (!response.ok) throw new Error(data.message || 'Failed to promote')
@@ -386,7 +459,7 @@ const shiftsSlice = createSlice({
 // SCANS SLICE
 const scansSlice = createSlice({
   name: 'scans',
-  initialState: { scans: [], loading: false, error: null },
+  initialState: { scans: [], weeklyStats: [], loading: false, error: null },
   reducers: {
     setScans: (state, action) => { state.scans = action.payload },
     addScan: (state, action) => {
@@ -398,21 +471,43 @@ const scansSlice = createSlice({
       .addCase(fetchRecentScans.pending, (state) => { state.loading = true; state.error = null })
       .addCase(fetchRecentScans.fulfilled, (state, action) => { state.loading = false; state.scans = action.payload })
       .addCase(fetchRecentScans.rejected, (state, action) => { state.loading = false; state.error = action.payload })
+      .addCase(fetchWeeklyStats.pending, (state) => { state.loading = true })
+      .addCase(fetchWeeklyStats.fulfilled, (state, action) => { state.loading = false; state.weeklyStats = action.payload })
+      .addCase(fetchWeeklyStats.rejected, (state, action) => { state.loading = false; state.error = action.payload })
   },
 })
-
 // DEVICES SLICE
 const devicesSlice = createSlice({
   name: 'devices',
   initialState: { devices: [], loading: false, error: null },
   reducers: {
     setDevices: (state, action) => { state.devices = action.payload },
+    clearDevicesError: (state) => { state.error = null },
   },
   extraReducers: (builder) => {
     builder
       .addCase(fetchDevices.pending, (state) => { state.loading = true; state.error = null })
       .addCase(fetchDevices.fulfilled, (state, action) => { state.loading = false; state.devices = action.payload })
       .addCase(fetchDevices.rejected, (state, action) => { state.loading = false; state.error = action.payload })
+      .addCase(createDevice.pending, (state) => { state.loading = true; state.error = null })
+      .addCase(createDevice.fulfilled, (state, action) => {
+        state.loading = false
+        state.devices.push(action.payload)
+      })
+      .addCase(createDevice.rejected, (state, action) => { state.loading = false; state.error = action.payload })
+      .addCase(updateDevice.pending, (state) => { state.loading = true; state.error = null })
+      .addCase(updateDevice.fulfilled, (state, action) => {
+        state.loading = false
+        const index = state.devices.findIndex(d => d._id === action.payload._id)
+        if (index !== -1) state.devices[index] = action.payload
+      })
+      .addCase(updateDevice.rejected, (state, action) => { state.loading = false; state.error = action.payload })
+      .addCase(deleteDevice.pending, (state) => { state.loading = true; state.error = null })
+      .addCase(deleteDevice.fulfilled, (state, action) => {
+        state.loading = false
+        state.devices = state.devices.filter(d => d._id !== action.payload)
+      })
+      .addCase(deleteDevice.rejected, (state, action) => { state.loading = false; state.error = action.payload })
   },
 })
 
@@ -495,6 +590,7 @@ export const { setEmployees, addEmployee, updateEmployee, removeEmployee } = emp
 export const { setScans, addScan } = scansSlice.actions
 export const { updateShiftInStore } = shiftsSlice.actions
 export const { clearUsersError } = usersSlice.actions
+export const { clearDevicesError } = devicesSlice.actions
 
 // ====================================================
 // 5. STORE
