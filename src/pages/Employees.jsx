@@ -207,7 +207,7 @@ const Employees = () => {
                         <div className="flex items-center gap-3">
                           {emp.image ? (
                             <img
-                              src={`${API_URL}${emp.image}`}
+                              src={emp.image}
                               alt={emp.name}
                               className={`w-8 h-8 rounded-full object-cover border ${isDarkMode ? 'border-indigo-600/30' : 'border-indigo-100'}`}
                             />

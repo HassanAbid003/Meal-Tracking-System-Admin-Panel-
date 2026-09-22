@@ -457,6 +457,8 @@ const shiftsSlice = createSlice({
 })
 
 // SCANS SLICE
+
+// SCANS SLICE
 const scansSlice = createSlice({
   name: 'scans',
   initialState: { scans: [], weeklyStats: [], loading: false, error: null },

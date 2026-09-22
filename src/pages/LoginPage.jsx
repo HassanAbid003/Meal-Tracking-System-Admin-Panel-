@@ -31,16 +31,29 @@ const LoginPage = ({ onLogin }) => {
 
       const data = await response.json()
 
-      if (response.ok) {
-        // No more localStorage — cookie is set by the backend
-        dispatch(setCredentials({ user: data, token: 'cookie' }))
-        onLogin()
-      } else {
-        setError(data.message || 'Invalid email or password')
+      if (!response.ok) {
+        // 429 = rate limited
+        if (response.status === 429) {
+          throw new Error(data.message || 'Too many attempts. Please wait 15 minutes and try again.')
+        }
+        // 401 = wrong credentials
+        if (response.status === 401) {
+          throw new Error('Invalid email or password')
+        }
+        // Fallback for other errors
+        throw new Error(data.message || 'Login failed')
       }
+
+      // Success — save user + token in Redux
+      dispatch(setCredentials({
+        user: data.user || data,
+        token: data.token,
+      }))
+
+      onLogin()
     } catch (err) {
       logError('Login failed:', err)
-      setError('Failed to connect to server')
+      setError(err.message || 'Failed to connect to server')
     } finally {
       setLoading(false)
     }

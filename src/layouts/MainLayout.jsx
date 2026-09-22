@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useState ,useEffect } from 'react'
 import Sidebar from '../components/Sidebar'
 import { Menu, X, Bell, LogOut } from 'lucide-react'
 import { useSelector, useDispatch } from 'react-redux'
-import { toggleTheme } from '../store'
+import { toggleTheme , fetchDevices } from '../store'
 
 const MainLayout = ({ children, activePage, setActivePage, onGoHome, onLogout }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
@@ -10,7 +10,16 @@ const MainLayout = ({ children, activePage, setActivePage, onGoHome, onLogout })
 
   // Get the state from Redux
   const isDarkMode = useSelector((state) => state.auth.isDarkMode)
+  const { devices } = useSelector((state) => state.devices)
   const dispatch = useDispatch()
+
+  useEffect(() => {
+    dispatch(fetchDevices())
+    const id = setInterval(() => dispatch(fetchDevices()), 30_000)
+    return () => clearInterval(id)
+  }, [dispatch])
+
+  const onlineDevices = devices.filter((d) => d.status === true).length
 
   return (
     <div className={`flex h-screen font-sans overflow-hidden ${isDarkMode ? 'bg-slate-950 text-white' : 'bg-gray-50 text-gray-900'}`}>
@@ -97,7 +106,7 @@ const MainLayout = ({ children, activePage, setActivePage, onGoHome, onLogout })
           <div className="flex items-center gap-4">
             <div className={`border rounded-lg px-3 py-1 flex items-center gap-2 ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-gray-50 border-gray-200'}`}>
               <span className="w-2 h-2 rounded-full bg-green-500"></span>
-              <span className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>4 devices online</span>
+              <span className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{onlineDevices} {onlineDevices === 1 ? 'device' : 'devices'} online</span>
             </div>
             <div className={`relative p-1.5 cursor-pointer ${isDarkMode ? 'text-gray-500 hover:text-white' : 'text-gray-500 hover:text-gray-900'}`}>
               <Bell size={20} />

@@ -42,9 +42,10 @@ const Devices = () => {
       const matchesSite =
         selectedSite === 'All Sites' || siteName === selectedSite
 
-      const matchesStatus =
-        selectedStatus === 'All Status' ||
-        d.status === selectedStatus.toLowerCase()
+  const matchesStatus =
+    selectedStatus === 'All Status' ||
+    (selectedStatus === 'Online' && d.isOnline === true) ||
+    (selectedStatus === 'Offline' && d.isOnline !== true)
 
       return matchesSearch && matchesSite && matchesStatus
     })
@@ -53,7 +54,7 @@ const Devices = () => {
   // Real stats
   const stats = useMemo(() => {
     const total = devices.length
-    const online = devices.filter((d) => d.status === 'online').length
+    const online = devices.filter((d) => d.status === true).length
     const offline = total - online
     return { total, online, offline }
   }, [devices])
@@ -277,12 +278,12 @@ const Devices = () => {
                       </td>
                       <td className="py-2 px-3">
                         <span className={`flex items-center gap-2 text-sm font-semibold ${
-                          device.status === 'online' ? 'text-green-500' : 'text-gray-500'
+                          device.isOnline === true ? 'text-green-500' : 'text-gray-500'
                         }`}>
-                          <span className={`w-2 h-2 rounded-full ${device.status === 'online' ? 'bg-green-500' : 'bg-gray-500'}`}></span>
-                          {device.status}
+                          <span className={`w-2 h-2 rounded-full ${device.isOnline === true ? 'bg-green-500' : 'bg-gray-500'}`}></span>
+                          {device.isOnline === true ? 'online' : 'offline'}
                         </span>
-                      </td>
+                      </td>                      
                       <td className={`py-2 px-3 text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
                         {formatLastPing(device.lastPing)}
                       </td>

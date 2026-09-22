@@ -126,7 +126,7 @@ const AddEmployeeModal = ({ isOpen, onClose }) => {
     try {
       const response = await fetch(`${API_URL}/api/employees`, {
         method: 'POST',
-        credentials: 'include',                        // ← add
+        credentials: 'include',                        
         body: payload,
       })
 

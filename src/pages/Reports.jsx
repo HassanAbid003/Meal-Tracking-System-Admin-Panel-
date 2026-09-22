@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { Search, ChevronDown, Download, Printer, Calendar, Lock } from 'lucide-react'
 import { useSelector, useDispatch } from 'react-redux'
 import { fetchRecentScans } from '../store'
+import { showSuccess, showError } from '../utils/toast'
 
 const Reports = ({ }) => {
   const isDarkMode = useSelector((state) => state.auth.isDarkMode)
@@ -179,7 +180,103 @@ const Reports = ({ }) => {
   }
 
   const handleExport = () => {
-    console.log('Exporting CSV...')
+    if (!canExport) {
+    showError('You do not have permission to export data')
+    return
+    }
+    // Build CSV rows based on active tab
+    let headers = []
+    let rows = []
+
+    if (activeTab === 'Daily') {
+      headers = ['Employee', 'Emp ID', 'Department', 'Site', 'Breakfast', 'Lunch', 'Dinner', 'Meals']
+      rows = filteredEmployees.map((emp) => {
+        const s = getDailyStatus(emp)
+        return [
+          emp.name,
+          emp.empId,
+          emp.department || '',
+          emp.site_id?.code || 'N/A',
+          s.breakfast === 'served' ? 'Yes' : 'No',
+          s.lunch === 'served' ? 'Yes' : 'No',
+          s.dinner === 'served' ? 'Yes' : 'No',
+          s.mealCount,
+        ]
+      })
+    } else if (activeTab === 'Weekly') {
+      // Header: Employee, Emp ID, Department, then Mon B/L/D, Tue B/L/D, etc.
+      headers = ['Employee', 'Emp ID', 'Department']
+      const dayNames = ['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri']
+      dayNames.forEach((d) => {
+        headers.push(`${d} B`, `${d} L`, `${d} D`)
+      })
+
+      rows = filteredEmployees.map((emp) => {
+        const week = getWeeklyData(emp)
+        const row = [emp.name, emp.empId, emp.department || '']
+        week.forEach((day) => {
+          row.push(
+            day.b === 'served' ? 'Yes' : 'No',
+            day.l === 'served' ? 'Yes' : 'No',
+            day.d === 'served' ? 'Yes' : 'No',
+          )
+        })
+        return row
+      })
+    } else if (activeTab === 'Monthly') {
+      headers = ['Employee', 'Emp ID', 'Department', 'Meals Served', 'Total Meals', 'Days', 'Percentage']
+      rows = filteredEmployees.map((emp) => {
+        const m = getMonthlyData(emp)
+        return [
+          emp.name,
+          emp.empId,
+          emp.department || '',
+          m.meals,
+          m.total,
+          m.days,
+          `${m.percent}%`,
+        ]
+      })
+    }
+
+    // Build CSV string
+    const escapeCell = (val) => {
+      const s = String(val ?? '')
+      // Escape quotes and wrap in quotes if contains comma, quote, or newline
+      if (s.includes('"') || s.includes(',') || s.includes('\n')) {
+        return `"${s.replace(/"/g, '""')}"`
+      }
+      return s
+    }
+
+    const csvLines = [
+      headers.map(escapeCell).join(','),
+      ...rows.map((row) => row.map(escapeCell).join(',')),
+    ]
+    const csvContent = csvLines.join('\r\n')
+
+    // Add UTF-8 BOM so Excel opens it correctly with special characters
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' })
+
+    // Create download link
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+
+    // Filename: mealtrack-report-Daily-2026-09-22.csv
+    const datePart = selectedDate
+    const filename = `mealtrack-report-${activeTab}-${datePart}.csv`
+    link.setAttribute('download', filename)
+
+    // Trigger download
+    document.body.appendChild(link)
+    link.click()
+
+    // Cleanup
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+
+    showSuccess(`Exported ${filename}`)
   }
 
   const handlePrint = () => {
@@ -199,284 +296,311 @@ const Reports = ({ }) => {
   }
 
   return (
-    <div className={`min-h-screen p-4 md:p-4 transition-colors duration-300 ${isDarkMode ? 'bg-slate-950 text-white' : 'bg-gray-50 text-gray-900'}`}>
+  <div className={`min-h-screen p-4 md:p-4 transition-colors duration-300 ${isDarkMode ? 'bg-slate-950 text-white' : 'bg-gray-50 text-gray-900'}`}>
 
-      {/* Top Bar */}
-      <div className="flex flex-col gap-4 mb-4">
-        <div className="flex flex-wrap items-center gap-3">
+    {/* Top Bar */}
+    <div className="flex flex-col gap-4 mb-4 print:hidden">
+      <div className="flex flex-wrap items-center gap-3">
 
-          {/* Tabs */}
-          <div className={`inline-flex rounded-xl p-1 transition-colors duration-300 ${isDarkMode ? 'bg-slate-900 border border-slate-800' : 'bg-white border border-gray-200'}`}>
-            {['Daily', 'Weekly', 'Monthly'].map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`px-5 py-2 rounded-lg text-xs font-medium transition-all ${
-                  activeTab === tab ? 'bg-indigo-600 text-white' : isDarkMode ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'
-                }`}
-              >
-                {tab}
-              </button>
+        {/* Tabs */}
+        <div className={`inline-flex rounded-xl p-1 transition-colors duration-300 ${isDarkMode ? 'bg-slate-900 border border-slate-800' : 'bg-white border border-gray-200'}`}>
+          {['Daily', 'Weekly', 'Monthly'].map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`px-5 py-2 rounded-lg text-xs font-medium transition-all ${
+                activeTab === tab ? 'bg-indigo-600 text-white' : isDarkMode ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'
+              }`}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+
+        {/* Date Picker */}
+        <div className={`flex items-center gap-2 border rounded-xl px-4 py-2.5 transition-colors duration-300 ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-200'}`}>
+          <input
+            type="date"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            className={`bg-transparent text-xs outline-none transition-colors duration-300 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}
+          />
+          <Calendar size={16} className={isDarkMode ? 'text-gray-500' : 'text-gray-400'} />
+        </div>
+
+        {/* Site Filter */}
+        <div className="relative">
+          <select
+            value={selectedSite}
+            onChange={(e) => setSelectedSite(e.target.value)}
+            className={`appearance-none w-full md:w-40 border rounded-xl pl-4 pr-10 py-2.5 text-xs focus:outline-none focus:border-indigo-500 cursor-pointer transition-colors ${
+              isDarkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-gray-200 text-gray-900'
+            }`}
+          >
+            {sites.map(site => (
+              <option key={site} value={site}>{site}</option>
             ))}
-          </div>
-
-          {/* Date Picker */}
-          <div className={`flex items-center gap-2 border rounded-xl px-4 py-2.5 transition-colors duration-300 ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-200'}`}>
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className={`bg-transparent text-xs outline-none transition-colors duration-300 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}
-            />
-            <Calendar size={16} className={isDarkMode ? 'text-gray-500' : 'text-gray-400'} />
-          </div>
-
-          {/* Site Filter */}
-          <div className="relative">
-            <select
-              value={selectedSite}
-              onChange={(e) => setSelectedSite(e.target.value)}
-              className={`appearance-none w-full md:w-40 border rounded-xl pl-4 pr-10 py-2.5 text-xs focus:outline-none focus:border-indigo-500 cursor-pointer transition-colors ${
-                isDarkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-gray-200 text-gray-900'
-              }`}
-            >
-              {sites.map(site => (
-                <option key={site} value={site}>{site}</option>
-              ))}
-            </select>
-            <ChevronDown size={16} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 pointer-events-none" />
-          </div>
-
-          {/* Department Filter */}
-          <div className="relative">
-            <select
-              value={selectedDept}
-              onChange={(e) => setSelectedDept(e.target.value)}
-              className={`appearance-none w-full md:w-48 border rounded-xl pl-4 pr-10 py-2.5 text-xs focus:outline-none focus:border-indigo-500 cursor-pointer transition-colors ${
-                isDarkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-gray-200 text-gray-900'
-              }`}
-            >
-              {departments.map(dept => (
-                <option key={dept} value={dept}>{dept}</option>
-              ))}
-            </select>
-            <ChevronDown size={16} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 pointer-events-none" />
-          </div>
-
-          {/* Search */}
-          <div className="relative flex-1 min-w-200px">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500" size={16} />
-            <input
-              type="text"
-              placeholder="Search employee..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className={`w-full border rounded-xl pl-10 pr-4 py-2.5 text-xs placeholder-gray-500 focus:outline-none focus:border-indigo-500 transition-colors ${
-                isDarkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-gray-200 text-gray-900'
-              }`}
-            />
-          </div>
-
-          {/* Action Buttons */}
-          {canExport && (
-            <div className="flex items-center gap-3">
-              <button
-                onClick={handleExport}
-                className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs px-4 py-2.5 rounded-xl transition-all shadow-lg shadow-indigo-900/30"
-              >
-                <Download size={16} />
-                Export CSV
-              </button>
-              <button
-                onClick={handlePrint}
-                className={`flex items-center gap-2 text-xs font-semibold px-4 py-2.5 rounded-xl transition-colors ${
-                  isDarkMode ? 'bg-slate-800 text-gray-300 hover:bg-slate-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                <Printer size={16} />
-                Print
-              </button>
-            </div>
-          )}
+          </select>
+          <ChevronDown size={16} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 pointer-events-none" />
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className={`rounded-xl border px-4 py-3 transition-colors duration-300 border-green-500/20 ${isDarkMode ? 'bg-green-500/5' : 'bg-green-50'}`}>
-            <p className={`text-2xl font-bold transition-colors duration-300 ${isDarkMode ? 'text-green-400' : 'text-green-600'}`}>{stats.served}</p>
-            <p className={`text-sm mt-1 transition-colors duration-300 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Meals Served</p>
-          </div>
-          <div className={`rounded-xl border px-4 py-3 transition-colors duration-300 border-red-500/20 ${isDarkMode ? 'bg-red-500/5' : 'bg-red-50'}`}>
-            <p className={`text-2xl font-bold transition-colors duration-300 ${isDarkMode ? 'text-red-400' : 'text-red-600'}`}>{stats.denied}</p>
-            <p className={`text-sm mt-1 transition-colors duration-300 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Denied / Duplicate</p>
-          </div>
-          <div className={`rounded-xl border px-4 py-3 transition-colors duration-300 border-yellow-500/20 ${isDarkMode ? 'bg-yellow-500/5' : 'bg-yellow-50'}`}>
-            <p className={`text-2xl font-bold transition-colors duration-300 ${isDarkMode ? 'text-yellow-400' : 'text-yellow-600'}`}>{stats.absent}</p>
-            <p className={`text-sm mt-1 transition-colors duration-300 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Absent</p>
-          </div>
-          <div className={`rounded-xl border px-4 py-3 transition-colors duration-300 border-indigo-500/20 ${isDarkMode ? 'bg-indigo-500/5' : 'bg-indigo-50'}`}>
-            <p className={`text-2xl font-bold transition-colors duration-300 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`}>{stats.total}</p>
-            <p className={`text-sm mt-1 transition-colors duration-300 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Total Employees</p>
-          </div>
+        {/* Department Filter */}
+        <div className="relative">
+          <select
+            value={selectedDept}
+            onChange={(e) => setSelectedDept(e.target.value)}
+            className={`appearance-none w-full md:w-48 border rounded-xl pl-4 pr-10 py-2.5 text-xs focus:outline-none focus:border-indigo-500 cursor-pointer transition-colors ${
+              isDarkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-gray-200 text-gray-900'
+            }`}
+          >
+            {departments.map(dept => (
+              <option key={dept} value={dept}>{dept}</option>
+            ))}
+          </select>
+          <ChevronDown size={16} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 pointer-events-none" />
         </div>
 
-        {/* Legend */}
-        <div className={`flex flex-wrap items-center gap-6 text-xs transition-colors duration-300 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-          <span className="flex items-center gap-1.5"><span className="text-green-500 font-bold">✓</span> Meal served</span>
-          <span className="flex items-center gap-1.5"><span className="text-red-500 font-bold">✗</span> Denied / duplicate attempt</span>
-          <span className="flex items-center gap-1.5"><span className="text-gray-500">○</span> Absent (didn't arrive)</span>
-          <span className="flex items-center gap-1.5"><span className="text-gray-400">—</span> Not assigned to this shift</span>
-          <span className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-            Date: {new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-          </span>
+        {/* Search */}
+        <div className="relative flex-1 min-w-200px">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500" size={16} />
+          <input
+            type="text"
+            placeholder="Search employee..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className={`w-full border rounded-xl pl-10 pr-4 py-2.5 text-xs placeholder-gray-500 focus:outline-none focus:border-indigo-500 transition-colors ${
+              isDarkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-gray-200 text-gray-900'
+            }`}
+          />
+        </div>
+
+        {/* Action Buttons */}
+        {canExport && (
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleExport}
+              className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs px-4 py-2.5 rounded-xl transition-all shadow-lg shadow-indigo-900/30"
+            >
+              <Download size={16} />
+              Export CSV
+            </button>
+            <button
+              onClick={handlePrint}
+              className={`flex items-center gap-2 text-xs font-semibold px-4 py-2.5 rounded-xl transition-colors ${
+                isDarkMode ? 'bg-slate-800 text-gray-300 hover:bg-slate-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <Printer size={16} />
+              Print
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className={`rounded-xl border px-4 py-3 transition-colors duration-300 border-green-500/20 ${isDarkMode ? 'bg-green-500/5' : 'bg-green-50'}`}>
+          <p className={`text-2xl font-bold transition-colors duration-300 ${isDarkMode ? 'text-green-400' : 'text-green-600'}`}>{stats.served}</p>
+          <p className={`text-sm mt-1 transition-colors duration-300 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Meals Served</p>
+        </div>
+        <div className={`rounded-xl border px-4 py-3 transition-colors duration-300 border-red-500/20 ${isDarkMode ? 'bg-red-500/5' : 'bg-red-50'}`}>
+          <p className={`text-2xl font-bold transition-colors duration-300 ${isDarkMode ? 'text-red-400' : 'text-red-600'}`}>{stats.denied}</p>
+          <p className={`text-sm mt-1 transition-colors duration-300 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Denied / Duplicate</p>
+        </div>
+        <div className={`rounded-xl border px-4 py-3 transition-colors duration-300 border-yellow-500/20 ${isDarkMode ? 'bg-yellow-500/5' : 'bg-yellow-50'}`}>
+          <p className={`text-2xl font-bold transition-colors duration-300 ${isDarkMode ? 'text-yellow-400' : 'text-yellow-600'}`}>{stats.absent}</p>
+          <p className={`text-sm mt-1 transition-colors duration-300 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Absent</p>
+        </div>
+        <div className={`rounded-xl border px-4 py-3 transition-colors duration-300 border-indigo-500/20 ${isDarkMode ? 'bg-indigo-500/5' : 'bg-indigo-50'}`}>
+          <p className={`text-2xl font-bold transition-colors duration-300 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`}>{stats.total}</p>
+          <p className={`text-sm mt-1 transition-colors duration-300 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Total Employees</p>
         </div>
       </div>
 
-      {/* Report Views */}
-      <div className={`rounded-xl border overflow-hidden transition-colors duration-300 ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-200'}`}>
-        <div className={`px-6 py-3 border-b transition-colors duration-300 ${isDarkMode ? 'border-slate-800' : 'border-gray-200'}`}>
-          <h3 className={`text-base font-bold transition-colors duration-300 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-            {activeTab === 'Daily' ? `Daily Meal Report - ${new Date(selectedDate).toLocaleDateString()}` :
-             activeTab === 'Weekly' ? 'Weekly Meal Report' : 'Monthly Meal Report'}
-          </h3>
-          <p className={`text-xs mt-1 transition-colors duration-300 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-            {filteredEmployees.length} employees shown | {scansForDate.length} total scans today
-          </p>
-        </div>
-
-        {/* DAILY VIEW */}
-        {activeTab === 'Daily' && (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className={`border-b transition-colors duration-300 ${isDarkMode ? 'border-slate-800' : 'border-gray-200'}`}>
-                  <th className={`py-2 px-6 text-sm font-semibold ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Employee</th>
-                  <th className={`py-2 px-6 text-sm font-semibold ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Emp ID</th>
-                  <th className={`py-2 px-6 text-sm font-semibold ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Dept</th>
-                  <th className={`py-2 px-6 text-sm font-semibold ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Site</th>
-                  <th className={`py-2 px-6 text-sm font-semibold ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Breakfast</th>
-                  <th className={`py-2 px-6 text-sm font-semibold ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Lunch</th>
-                  <th className={`py-2 px-6 text-sm font-semibold ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Dinner</th>
-                  <th className={`py-2 px-6 text-sm font-semibold ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Meals</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredEmployees.map((emp) => {
-                  const status = getDailyStatus(emp)
-                  return (
-                    <tr key={emp._id} className={`border-b last:border-b-0 ${isDarkMode ? 'border-slate-800/50' : 'border-gray-100'}`}>
-                      <td className="py-2 px-6">
-                        <span className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{emp.name}</span>
-                      </td>
-                      <td className={`py-2 px-6 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{emp.empId}</td>
-                      <td className={`py-2 px-6 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{emp.department}</td>
-                      <td className="py-2 px-6"><span className={`text-xs font-semibold px-2 py-1 rounded-md ${isDarkMode ? 'bg-slate-800 text-gray-400' : 'bg-gray-100 text-gray-600'}`}>{emp.site_id?.code || 'N/A'}</span></td>
-                      <td className="py-2 px-6">{getStatusIcon(status.breakfast)}</td>
-                      <td className="py-2 px-6">{getStatusIcon(status.lunch)}</td>
-                      <td className="py-2 px-6">{getStatusIcon(status.dinner)}</td>
-                      <td className={`py-2 px-6 text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{status.mealCount}</td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {/* WEEKLY VIEW */}
-        {activeTab === 'Weekly' && (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className={`border-b transition-colors duration-300 ${isDarkMode ? 'border-slate-800' : 'border-gray-200'}`}>
-                  <th className={`py-2 px-6 text-sm font-semibold ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Employee</th>
-                  <th className={`py-2 px-6 text-sm font-semibold ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Dept</th>
-                  {['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'].map((day, i) => {
-                    const weekStart = new Date(selectedDate)
-                    weekStart.setDate(weekStart.getDate() - weekStart.getDay())
-                    const date = new Date(weekStart)
-                    date.setDate(date.getDate() + i)
-                    return (
-                      <th key={i} className={`py-2 px-2 text-center text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                        <div className="flex flex-col items-center">
-                          <span>{day}</span>
-                          <span className="opacity-70 text-[10px]">{date.toISOString().split('T')[0]}</span>
-                          <div className="flex gap-0.5 mt-1">
-                            <span className="text-[10px] text-amber-500">B</span>
-                            <span className="text-[10px] text-yellow-500">L</span>
-                            <span className="text-[10px] text-purple-500">D</span>
-                          </div>
-                        </div>
-                      </th>
-                    )
-                  })}
-                </tr>
-              </thead>
-              <tbody>
-                {filteredEmployees.map((emp) => {
-                  const weeklyDays = getWeeklyData(emp)
-                  return (
-                    <tr key={emp._id} className={`border-b last:border-b-0 ${isDarkMode ? 'border-slate-800/50' : 'border-gray-100'}`}>
-                      <td className="py-3 px-6">
-                        <div>
-                          <span className={`block text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{emp.name}</span>
-                          <span className={`block text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{emp.empId}</span>
-                        </div>
-                      </td>
-                      <td className={`py-3 px-6 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{emp.department}</td>
-                      {weeklyDays.map((day, i) => (
-                        <td key={i} className="py-3 px-2 text-center">
-                          <div className="flex gap-0.5 justify-center">
-                            <span className="text-xs">{getStatusIcon(day.b)}</span>
-                            <span className="text-xs">{getStatusIcon(day.l)}</span>
-                            <span className="text-xs">{getStatusIcon(day.d)}</span>
-                          </div>
-                        </td>
-                      ))}
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {/* MONTHLY VIEW */}
-        {activeTab === 'Monthly' && (
-          <div className="p-6">
-            <div className="space-y-8">
-              {filteredEmployees.map((emp) => {
-                const monthly = getMonthlyData(emp)
-                return (
-                  <div key={emp._id} className="flex items-center gap-6">
-                    <div className="flex items-center gap-3 w-64">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold ${isDarkMode ? 'bg-indigo-600/20 text-indigo-400' : 'bg-indigo-50 text-indigo-600'}`}>
-                        {getInitials(emp.name)}
-                      </div>
-                      <div>
-                        <p className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{emp.name}</p>
-                        <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{emp.empId}</p>
-                      </div>
-                    </div>
-
-                    <div className="flex-1">
-                      <div className={`h-1.5 rounded-full overflow-hidden ${isDarkMode ? 'bg-slate-800' : 'bg-gray-100'}`}>
-                        <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${monthly.percent}%` }}></div>
-                      </div>
-                      <p className={`text-xs mt-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                        {monthly.meals} of {monthly.total} meals served ({monthly.days} days)
-                      </p>
-                    </div>
-
-                    <span className={`text-sm font-bold w-12 text-right ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{monthly.percent}%</span>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        )}
+      {/* Legend */}
+      <div className={`flex flex-wrap items-center gap-6 text-xs transition-colors duration-300 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+        <span className="flex items-center gap-1.5"><span className="text-green-500 font-bold">✓</span> Meal served</span>
+        <span className="flex items-center gap-1.5"><span className="text-red-500 font-bold">✗</span> Denied / duplicate attempt</span>
+        <span className="flex items-center gap-1.5"><span className="text-gray-500">○</span> Absent (didn't arrive)</span>
+        <span className="flex items-center gap-1.5"><span className="text-gray-400">—</span> Not assigned to this shift</span>
+        <span className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+          Date: {new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+        </span>
       </div>
     </div>
+
+    {/* ============================================
+        PRINT HEADER (visible only when printing)
+        ============================================ */}
+    <div className="hidden print:block" style={{ marginBottom: '16px', paddingBottom: '12px', borderBottom: '3px solid #000' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+        <div>
+          <h1 style={{ fontSize: '22px', fontWeight: '800', margin: 0, letterSpacing: '-0.5px' }}>MealTrack</h1>
+          <p style={{ fontSize: '11px', margin: '4px 0 0', color: '#555' }}>Corporate Meal Tracking System</p>
+        </div>
+        <div style={{ textAlign: 'right', fontSize: '11px' }}>
+          <p style={{ margin: 0, fontWeight: '700' }}>
+            {activeTab === 'Daily' ? 'Daily Report' : activeTab === 'Weekly' ? 'Weekly Report' : 'Monthly Report'}
+          </p>
+          <p style={{ margin: '2px 0 0', color: '#555' }}>
+            {new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+          </p>
+        </div>
+      </div>
+      <div style={{ fontSize: '10px', marginTop: '10px', color: '#333' }}>
+        <span style={{ marginRight: '20px' }}>Total Employees: <strong>{filteredEmployees.length}</strong></span>
+        <span style={{ marginRight: '20px' }}>Meals Served: <strong>{stats.served}</strong></span>
+        <span style={{ marginRight: '20px' }}>Denied: <strong>{stats.denied}</strong></span>
+        <span>Absent: <strong>{stats.absent}</strong></span>
+      </div>
+    </div>
+
+    {/* Report Views */}
+    <div id="print-report-area" className={`rounded-xl border overflow-hidden transition-colors duration-300 print:border-0 print:rounded-none ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-200'}`}>
+      <div className={`px-6 py-3 border-b transition-colors duration-300 print:hidden ${isDarkMode ? 'border-slate-800' : 'border-gray-200'}`}>
+        <h3 className={`text-base font-bold transition-colors duration-300 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+          {activeTab === 'Daily' ? `Daily Meal Report - ${new Date(selectedDate).toLocaleDateString()}` :
+          activeTab === 'Weekly' ? 'Weekly Meal Report' : 'Monthly Meal Report'}
+        </h3>
+        <p className={`text-xs mt-1 transition-colors duration-300 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+          {filteredEmployees.length} employees shown | {scansForDate.length} total scans today
+        </p>
+      </div>
+
+      {/* DAILY VIEW */}
+      {activeTab === 'Daily' && (
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className={`border-b transition-colors duration-300 ${isDarkMode ? 'border-slate-800' : 'border-gray-200'}`}>
+                <th className={`py-2 px-6 text-sm font-semibold ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Employee</th>
+                <th className={`py-2 px-6 text-sm font-semibold ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Emp ID</th>
+                <th className={`py-2 px-6 text-sm font-semibold ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Dept</th>
+                <th className={`py-2 px-6 text-sm font-semibold ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Site</th>
+                <th className={`py-2 px-6 text-sm font-semibold ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Breakfast</th>
+                <th className={`py-2 px-6 text-sm font-semibold ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Lunch</th>
+                <th className={`py-2 px-6 text-sm font-semibold ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Dinner</th>
+                <th className={`py-2 px-6 text-sm font-semibold ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Meals</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredEmployees.map((emp) => {
+                const status = getDailyStatus(emp)
+                return (
+                  <tr key={emp._id} className={`border-b last:border-b-0 ${isDarkMode ? 'border-slate-800/50' : 'border-gray-100'}`}>
+                    <td className="py-2 px-6">
+                      <span className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{emp.name}</span>
+                    </td>
+                    <td className={`py-2 px-6 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{emp.empId}</td>
+                    <td className={`py-2 px-6 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{emp.department}</td>
+                    <td className="py-2 px-6"><span className={`text-xs font-semibold px-2 py-1 rounded-md ${isDarkMode ? 'bg-slate-800 text-gray-400' : 'bg-gray-100 text-gray-600'}`}>{emp.site_id?.code || 'N/A'}</span></td>
+                    <td className="py-2 px-6">{getStatusIcon(status.breakfast)}</td>
+                    <td className="py-2 px-6">{getStatusIcon(status.lunch)}</td>
+                    <td className="py-2 px-6">{getStatusIcon(status.dinner)}</td>
+                    <td className={`py-2 px-6 text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{status.mealCount}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* WEEKLY VIEW */}
+      {activeTab === 'Weekly' && (
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className={`border-b transition-colors duration-300 ${isDarkMode ? 'border-slate-800' : 'border-gray-200'}`}>
+                <th className={`py-2 px-6 text-sm font-semibold ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Employee</th>
+                <th className={`py-2 px-6 text-sm font-semibold ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Dept</th>
+                {['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'].map((day, i) => {
+                  const weekStart = new Date(selectedDate)
+                  weekStart.setDate(weekStart.getDate() - weekStart.getDay())
+                  const date = new Date(weekStart)
+                  date.setDate(date.getDate() + i)
+                  return (
+                    <th key={i} className={`py-2 px-2 text-center text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                      <div className="flex flex-col items-center">
+                        <span>{day}</span>
+                        <span className="opacity-70 text-[10px]">{date.toISOString().split('T')[0]}</span>
+                        <div className="flex gap-0.5 mt-1">
+                          <span className="text-[10px] text-amber-500">B</span>
+                          <span className="text-[10px] text-yellow-500">L</span>
+                          <span className="text-[10px] text-purple-500">D</span>
+                        </div>
+                      </div>
+                    </th>
+                  )
+                })}
+              </tr>
+            </thead>
+            <tbody>
+              {filteredEmployees.map((emp) => {
+                const weeklyDays = getWeeklyData(emp)
+                return (
+                  <tr key={emp._id} className={`border-b last:border-b-0 ${isDarkMode ? 'border-slate-800/50' : 'border-gray-100'}`}>
+                    <td className="py-3 px-6">
+                      <div>
+                        <span className={`block text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{emp.name}</span>
+                        <span className={`block text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{emp.empId}</span>
+                      </div>
+                    </td>
+                    <td className={`py-3 px-6 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{emp.department}</td>
+                    {weeklyDays.map((day, i) => (
+                      <td key={i} className="py-3 px-2 text-center">
+                        <div className="flex gap-0.5 justify-center">
+                          <span className="text-xs">{getStatusIcon(day.b)}</span>
+                          <span className="text-xs">{getStatusIcon(day.l)}</span>
+                          <span className="text-xs">{getStatusIcon(day.d)}</span>
+                        </div>
+                      </td>
+                    ))}
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* MONTHLY VIEW */}
+      {activeTab === 'Monthly' && (
+        <div className="p-6">
+          <div className="space-y-8">
+            {filteredEmployees.map((emp) => {
+              const monthly = getMonthlyData(emp)
+              return (
+                <div key={emp._id} className="flex items-center gap-6">
+                  <div className="flex items-center gap-3 w-64">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold ${isDarkMode ? 'bg-indigo-600/20 text-indigo-400' : 'bg-indigo-50 text-indigo-600'}`}>
+                      {getInitials(emp.name)}
+                    </div>
+                    <div>
+                      <p className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{emp.name}</p>
+                      <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{emp.empId}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex-1">
+                    <div className={`h-1.5 rounded-full overflow-hidden ${isDarkMode ? 'bg-slate-800' : 'bg-gray-100'}`}>
+                      <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${monthly.percent}%` }}></div>
+                    </div>
+                    <p className={`text-xs mt-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                      {monthly.meals} of {monthly.total} meals served ({monthly.days} days)
+                    </p>
+                  </div>
+
+                  <span className={`text-sm font-bold w-12 text-right ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{monthly.percent}%</span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+
+  </div>
   )
 }
 

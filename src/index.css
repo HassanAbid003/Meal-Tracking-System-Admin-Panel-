@@ -70,6 +70,70 @@ body::-webkit-scrollbar-thumb {
   scrollbar-color: #334155 transparent !important;
 }
 
+/* ============================================
+   PRINT STYLES — Reports
+   ============================================ */
+@media print {
+  /* Hide everything by default */
+  body * {
+    visibility: hidden;
+  }
 
+  /* Show only the report area */
+  #print-report-area,
+  #print-report-area * {
+    visibility: visible;
+  }
+
+  /* Position it at the top-left of the page */
+  #print-report-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    background: #ffffff !important;
+    color: #000000 !important;
+    padding: 20px;
+  }
+
+  /* Force light-mode colors inside report */
+  #print-report-area * {
+    background: transparent !important;
+    color: #000000 !important;
+    border-color: #cccccc !important;
+  }
+
+  /* Table styling for print */
+  #print-report-area table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+  }
+
+  #print-report-area th,
+  #print-report-area td {
+    border: 1px solid #999 !important;
+    padding: 6px 8px !important;
+    text-align: left;
+  }
+
+  #print-report-area th {
+    background: #f0f0f0 !important;
+    font-weight: 700 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Page setup */
+  @page {
+    size: A4 landscape;
+    margin: 15mm;
+  }
+
+  /* Hide scrollbars */
+  ::-webkit-scrollbar {
+    display: none;
+  }
+}
 
 

@@ -60,7 +60,7 @@ const EmployeeDetailsModal = ({ isOpen, onClose, employee, mode }) => {
         cnic: employee.cnic || ''
       })
       setImageFile(null)
-      setImagePreview(employee.image ? `${API_URL}${employee.image}` : null)
+      setImagePreview(employee.image ? `${employee.image}` : null)
       setRemoveImage(false)
     }
   }, [employee])
@@ -176,6 +176,50 @@ const EmployeeDetailsModal = ({ isOpen, onClose, employee, mode }) => {
     return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
   }
 
+  // const handlePrint = () => {
+  //   const qrContainer = document.getElementById('qr-image-print')
+  //   const qrSvg = qrContainer.querySelector('svg')
+  //   const printWindow = window.open('', '_blank', 'width=600,height=700')
+
+  //   const printImage = imagePreview
+  //     ? `<img src="${imagePreview}" style="width: 96px; height: 96px; border-radius: 50%; object-fit: cover; margin: 16px auto 8px; display: block;" />`
+  //     : ''
+
+  //   printWindow.document.write(`
+  //     <html>
+  //       <head>
+  //         <title>Print Employee ID</title>
+  //         <style>
+  //           body { font-family: -apple-system, sans-serif; margin: 0; background: #f8fafc; display: flex; justify-content: center; align-items: center; height: 100vh; }
+  //           .card { background: white; width: 350px; padding: 40px 30px; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); text-align: center; }
+  //           .app-name { font-size: 18px; font-weight: 700; color: #0f172a; margin: 0 0 4px; }
+  //           .employee-name { font-size: 28px; font-weight: 700; color: #0f172a; margin: 8px 0 4px; }
+  //           .employee-id { font-size: 14px; color: #64748b; margin: 0 0 2px; }
+  //           .employee-dept { font-size: 12px; color: #94a3b8; margin: 0 0 24px; }
+  //           .employee-site { font-size: 14px; color: #64748b; margin: 0 0 2px; }
+  //           .qr-border { border: 2px solid #e2e8f0; border-radius: 12px; padding: 16px; background: white; display: inline-block; }
+  //           .footer { font-size: 10px; color: #cbd5e1; margin-top: 16px; }
+  //         </style>
+  //       </head>
+  //       <body>
+  //         <div class="card">
+  //           <p class="app-name">MealTrack</p>
+  //           ${printImage}
+  //           <p class="employee-name">${formData.name}</p>
+  //           <p class="employee-id">${formData.empId}</p>
+  //           <p class="employee-dept">${formData.department}</p>
+  //           <p class="employee-site">${formData.site_}</p>
+  //           <div class="qr-border">${qrSvg.outerHTML}</div>
+  //           <p class="footer">Scan to verify employee</p>
+  //         </div>
+  //       </body>
+  //     </html>
+  //   `)
+  //   printWindow.document.close()
+  //   printWindow.focus()
+  //   printWindow.print()
+  // }
+
   const handlePrint = () => {
     const qrContainer = document.getElementById('qr-image-print')
     const qrSvg = qrContainer.querySelector('svg')
@@ -185,30 +229,34 @@ const EmployeeDetailsModal = ({ isOpen, onClose, employee, mode }) => {
       ? `<img src="${imagePreview}" style="width: 96px; height: 96px; border-radius: 50%; object-fit: cover; margin: 16px auto 8px; display: block;" />`
       : ''
 
+    // Compute site text from sites list
+    const siteObj = sites.find(s => s._id === formData.site_id)
+    const siteText = siteObj ? `${siteObj.code} — ${siteObj.name}` : '—'
+
     printWindow.document.write(`
       <html>
         <head>
           <title>Print Employee ID</title>
           <style>
             body { font-family: -apple-system, sans-serif; margin: 0; background: #f8fafc; display: flex; justify-content: center; align-items: center; height: 100vh; }
-            .card { background: white; width: 350px; padding: 40px 30px; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); text-align: center; }
-            .logo-box { width: 48px; height: 48px; background: #6366f1; border-radius: 12px; display: flex; justify-content: center; align-items: center; margin: 0 auto 16px; color: white; font-size: 24px; }
-            .app-name { font-size: 18px; font-weight: 700; color: #0f172a; margin: 0 0 4px; }
+            .card { background: white; width: 350px; padding: 15px 10px; border-radius: 16px; border:solid black; text-align: center; }
+            .app-name { font-size: 18px; font-weight: 700; color: #0f172a; margin: 0 0 9px; }
             .employee-name { font-size: 28px; font-weight: 700; color: #0f172a; margin: 8px 0 4px; }
             .employee-id { font-size: 14px; color: #64748b; margin: 0 0 2px; }
-            .employee-dept { font-size: 12px; color: #94a3b8; margin: 0 0 24px; }
-            .qr-border { border: 2px solid #e2e8f0; border-radius: 12px; padding: 16px; background: white; display: inline-block; }
+            .employee-dept { font-size: 12px; color: #94a3b8; margin: 0 0 2px; }
+            .employee-site { font-size: 14px; color: #64748b; margin: 0 0 2px; }
+            .qr-border { border: 2px solid #e2e8f0; border-radius: 12px; padding: 16px; background: white; display: inline-block; margin-top: 16px; }
             .footer { font-size: 10px; color: #cbd5e1; margin-top: 16px; }
           </style>
         </head>
         <body>
           <div class="card">
-            <div class="logo-box">🍽️</div>
             <p class="app-name">MealTrack</p>
             ${printImage}
             <p class="employee-name">${formData.name}</p>
             <p class="employee-id">${formData.empId}</p>
             <p class="employee-dept">${formData.department}</p>
+            <p class="employee-site">${siteText}</p>
             <div class="qr-border">${qrSvg.outerHTML}</div>
             <p class="footer">Scan to verify employee</p>
           </div>
@@ -219,6 +267,7 @@ const EmployeeDetailsModal = ({ isOpen, onClose, employee, mode }) => {
     printWindow.focus()
     printWindow.print()
   }
+
 
   if (!isOpen || !employee) return null
 
