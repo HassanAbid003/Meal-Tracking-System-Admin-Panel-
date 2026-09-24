@@ -106,7 +106,7 @@ const MainLayout = ({ children, activePage, setActivePage, onGoHome, onLogout })
           <div className="flex items-center gap-4">
             <div className={`border rounded-lg px-3 py-1 flex items-center gap-2 ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-gray-50 border-gray-200'}`}>
               <span className="w-2 h-2 rounded-full bg-green-500"></span>
-              <span className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{onlineDevices} {onlineDevices === 1 ? 'device' : 'devices'} online</span>
+              {/* <span className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{onlineDevices} {onlineDevices === 1 ? 'device' : 'devices'} online</span> */}
             </div>
             <div className={`relative p-1.5 cursor-pointer ${isDarkMode ? 'text-gray-500 hover:text-white' : 'text-gray-500 hover:text-gray-900'}`}>
               <Bell size={20} />
