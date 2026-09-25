@@ -36,9 +36,10 @@ const PromoteEmployeeModal = ({
     }
   }, [employee])
 
-  if (!isOpen || !employee) return null
+if (!isOpen || !employee) return null
 
-  const isValid = password && password.length >= 6
+const isMessKeeper = role === 'mess_keeper'
+const isValid = password && password.length >= 6 && (!isMessKeeper || deviceSerial)
 
   const handleSubmit = (e) => {
     e.preventDefault()
@@ -55,7 +56,7 @@ const PromoteEmployeeModal = ({
     setShowPassword(true)
   }
 
-  const isMessKeeper = role === 'mess_keeper'
+  // const isMessKeeper = role === 'mess_keeper'
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
@@ -178,7 +179,7 @@ const PromoteEmployeeModal = ({
           {isMessKeeper && (
             <div>
               <label className={`block text-xs font-semibold uppercase mb-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                Device (optional)
+                Device <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <Monitor size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none z-10" />
@@ -191,7 +192,7 @@ const PromoteEmployeeModal = ({
                   }`}
                 >
                   <option value="">
-                    {loadingDevices ? 'Loading devices...' : '— Let tablet pick on first launch —'}
+                    {loadingDevices ? 'Loading devices...' : '— Select a device —'}
                   </option>
                   {devices.map((d) => (
                     <option key={d._id} value={d.serial}>
@@ -201,7 +202,7 @@ const PromoteEmployeeModal = ({
                 </select>
               </div>
               <p className={`text-xs mt-1.5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-                Leave blank to let the Mess Keeper pick a device when they first open the app.
+                This device will be locked to this Mess Keeper — they won't need to pick it.
               </p>
             </div>
           )}

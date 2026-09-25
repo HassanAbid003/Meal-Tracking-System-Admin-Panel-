@@ -237,6 +237,7 @@ const Devices = () => {
                   <th className={`py-2.5 pl-3 pr-1 text-xs font-semibold ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Device</th>
                   <th className={`py-2.5 px-1 text-xs font-semibold ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Serial</th>
                   <th className={`py-2.5 px-1 text-xs font-semibold ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Site</th>
+                  <th className={`py-2.5 px-1 text-xs font-semibold ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Assigned To</th>
                   <th className={`py-2.5 px-3 text-xs font-semibold ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Status</th>
                   <th className={`py-2.5 px-3 text-xs font-semibold ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Last Ping</th>
                   <th className={`py-2.5 pl-3 pr-1 text-xs font-semibold ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Actions</th>
@@ -276,6 +277,16 @@ const Devices = () => {
                           <span className={isDarkMode ? 'text-gray-500' : 'text-gray-400'}>—</span>
                         )}
                       </td>
+                      <td className={`py-2 px-1 text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                        {device.assignedTo ? (
+                          <div className="flex flex-col">
+                            <span className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{device.assignedTo.name}</span>
+                            <span className={isDarkMode ? 'text-gray-500' : 'text-gray-400'}>{device.assignedTo.email}</span>
+                          </div>
+                        ) : (
+                          <span className={isDarkMode ? 'text-gray-500' : 'text-gray-400'}>Unassigned</span>
+                        )}
+                      </td>                      
                       <td className="py-2 px-3">
                         <span className={`flex items-center gap-2 text-sm font-semibold ${
                           device.isOnline === true ? 'text-green-500' : 'text-gray-500'
