@@ -216,7 +216,7 @@ const Employees = () => {
                               {getInitials(emp.name)}
                             </div>
                           )}
-                          <div>
+                          <div className='min-w-0 flex-1'>
                             <p className={`text-xs font-medium truncate ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{emp.name}</p>
                             <p className={`text-[10px] truncate ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{emp.email}</p>
                           </div>
