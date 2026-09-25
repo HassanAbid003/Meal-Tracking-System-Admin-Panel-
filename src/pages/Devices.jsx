@@ -54,7 +54,7 @@ const Devices = () => {
   // Real stats
   const stats = useMemo(() => {
     const total = devices.length
-    const online = devices.filter((d) => d.status === true).length
+    const online = devices.filter((d) => d.isOnline === true).length
     const offline = total - online
     return { total, online, offline }
   }, [devices])

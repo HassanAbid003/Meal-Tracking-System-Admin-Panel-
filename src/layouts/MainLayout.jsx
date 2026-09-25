@@ -19,7 +19,7 @@ const MainLayout = ({ children, activePage, setActivePage, onGoHome, onLogout })
     return () => clearInterval(id)
   }, [dispatch])
 
-  const onlineDevices = devices.filter((d) => d.status === true).length
+  const onlineDevices = devices.filter((d) => d.isOnline === true).length
 
   return (
     <div className={`flex h-screen font-sans overflow-hidden ${isDarkMode ? 'bg-slate-950 text-white' : 'bg-gray-50 text-gray-900'}`}>
