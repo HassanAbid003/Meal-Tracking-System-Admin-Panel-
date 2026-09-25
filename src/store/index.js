@@ -130,7 +130,6 @@ export const toggleShift = createAsyncThunk('shifts/toggleShift', async (id, { r
 })
 
 // ---------- DEVICES ----------
-// ---------- DEVICES ----------
 export const fetchDevices = createAsyncThunk('devices/fetchDevices', async (_, { rejectWithValue }) => {
   try {
     const response = await fetch(`${API_URL}/api/devices`, {
@@ -195,6 +194,23 @@ export const deleteDevice = createAsyncThunk(
       const data = await response.json()
       if (!response.ok) throw new Error(data.message || 'Failed to delete device')
       return id
+    } catch (error) {
+      return rejectWithValue(error.message)
+    }
+  }
+)
+
+export const fetchUnassignedDevices = createAsyncThunk(
+  'devices/fetchUnassignedDevices',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await fetch(`${API_URL}/api/devices/unassigned`, {
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.message || 'Failed to fetch unassigned devices')
+      return data
     } catch (error) {
       return rejectWithValue(error.message)
     }
@@ -481,8 +497,12 @@ const scansSlice = createSlice({
 // DEVICES SLICE
 const devicesSlice = createSlice({
   name: 'devices',
-  initialState: { devices: [], loading: false, error: null },
-  reducers: {
+  initialState: { devices: [],     
+    unassignedDevices: [], 
+    loading: false,
+    unassignedLoading: false,      
+    error: null },
+    reducers: {
     setDevices: (state, action) => { state.devices = action.payload },
     clearDevicesError: (state) => { state.error = null },
   },
@@ -510,8 +530,19 @@ const devicesSlice = createSlice({
         state.devices = state.devices.filter(d => d._id !== action.payload)
       })
       .addCase(deleteDevice.rejected, (state, action) => { state.loading = false; state.error = action.payload })
-  },
+      .addCase(fetchUnassignedDevices.pending, (state) => { state.unassignedLoading = true })
+      .addCase(fetchUnassignedDevices.fulfilled, (state, action) => {
+        state.unassignedLoading = false
+        state.unassignedDevices = action.payload
+      })
+      .addCase(fetchUnassignedDevices.rejected, (state, action) => {
+        state.unassignedLoading = false
+        state.error = action.payload
+      })
+    },
 })
+
+
 
 // DEPARTMENTS SLICE
 const departmentSlice = createSlice({

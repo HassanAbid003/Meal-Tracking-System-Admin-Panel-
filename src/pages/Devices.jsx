@@ -246,7 +246,7 @@ const Devices = () => {
               <tbody>
                 {filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className={`py-8 text-center text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                    <td colSpan={7} className={`py-8 text-center text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                       No devices match your filters
                     </td>
                   </tr>
