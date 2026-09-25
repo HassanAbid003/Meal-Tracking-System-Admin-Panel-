@@ -217,8 +217,8 @@ const Employees = () => {
                             </div>
                           )}
                           <div>
-                            <p className={`text-xs font-medium truncate... ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{emp.name}</p>
-                            <p className={`text-[10px] truncate... ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{emp.email}</p>
+                            <p className={`text-xs font-medium truncate ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{emp.name}</p>
+                            <p className={`text-[10px] truncate ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{emp.email}</p>
                           </div>
                         </div>
                       </td>
