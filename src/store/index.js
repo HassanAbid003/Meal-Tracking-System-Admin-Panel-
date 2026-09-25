@@ -30,7 +30,7 @@ const authSlice = createSlice({
 // 2. ASYNC THUNKS
 // ====================================================
 
-// ---------- AUTH: PASSWORD RESET ----------
+// ---------- AUTH ----------
 export const forgotPassword = createAsyncThunk(
   'auth/forgotPassword',
   async ({ email }, { rejectWithValue }) => {
@@ -144,6 +144,23 @@ export const fetchDevices = createAsyncThunk('devices/fetchDevices', async (_, {
   }
 })
 
+export const fetchUnassignedDevices = createAsyncThunk(
+  'devices/fetchUnassignedDevices',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await fetch(`${API_URL}/api/devices/unassigned`, {
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.message || 'Failed to fetch unassigned devices')
+      return data
+    } catch (error) {
+      return rejectWithValue(error.message)
+    }
+  }
+)
+
 export const createDevice = createAsyncThunk(
   'devices/createDevice',
   async ({ name, serial, site_id, status }, { rejectWithValue }) => {
@@ -200,17 +217,36 @@ export const deleteDevice = createAsyncThunk(
   }
 )
 
-export const fetchUnassignedDevices = createAsyncThunk(
-  'devices/fetchUnassignedDevices',
-  async (_, { rejectWithValue }) => {
+export const generatePairingCode = createAsyncThunk(
+  'devices/generatePairingCode',
+  async (deviceId, { rejectWithValue }) => {
     try {
-      const response = await fetch(`${API_URL}/api/devices/unassigned`, {
+      const response = await fetch(`${API_URL}/api/devices/${deviceId}/pairing-code`, {
+        method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
       })
       const data = await response.json()
-      if (!response.ok) throw new Error(data.message || 'Failed to fetch unassigned devices')
+      if (!response.ok) throw new Error(data.message || 'Failed to generate code')
       return data
+    } catch (error) {
+      return rejectWithValue(error.message)
+    }
+  }
+)
+
+export const unpairDevice = createAsyncThunk(
+  'devices/unpairDevice',
+  async (deviceId, { rejectWithValue }) => {
+    try {
+      const response = await fetch(`${API_URL}/api/devices/${deviceId}/unpair`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.message || 'Failed to unpair device')
+      return { deviceId, device: data.device }
     } catch (error) {
       return rejectWithValue(error.message)
     }
@@ -248,6 +284,7 @@ export const fetchWeeklyStats = createAsyncThunk(
     }
   }
 )
+
 // ---------- EMPLOYEES ----------
 export const fetchEmployees = createAsyncThunk('employees/fetchEmployees', async (_, { rejectWithValue }) => {
   try {
@@ -405,7 +442,6 @@ export const resetUserPassword = createAsyncThunk(
 // 3. SLICES
 // ====================================================
 
-// SITES SLICE
 const sitesSlice = createSlice({
   name: 'sites',
   initialState: { sites: [], loading: false, error: null },
@@ -427,7 +463,6 @@ const sitesSlice = createSlice({
   },
 })
 
-// EMPLOYEES SLICE
 const employeesSlice = createSlice({
   name: 'employees',
   initialState: { employees: [], loading: false, error: null },
@@ -450,7 +485,6 @@ const employeesSlice = createSlice({
   },
 })
 
-// SHIFTS SLICE
 const shiftsSlice = createSlice({
   name: 'shifts',
   initialState: { shifts: [], loading: false, error: null },
@@ -472,9 +506,6 @@ const shiftsSlice = createSlice({
   },
 })
 
-// SCANS SLICE
-
-// SCANS SLICE
 const scansSlice = createSlice({
   name: 'scans',
   initialState: { scans: [], weeklyStats: [], loading: false, error: null },
@@ -494,42 +525,28 @@ const scansSlice = createSlice({
       .addCase(fetchWeeklyStats.rejected, (state, action) => { state.loading = false; state.error = action.payload })
   },
 })
-// DEVICES SLICE
+
 const devicesSlice = createSlice({
   name: 'devices',
-  initialState: { devices: [],     
-    unassignedDevices: [], 
+  initialState: {
+    devices: [],
+    unassignedDevices: [],
     loading: false,
-    unassignedLoading: false,      
-    error: null },
-    reducers: {
+    unassignedLoading: false,
+    error: null,
+  },
+  reducers: {
     setDevices: (state, action) => { state.devices = action.payload },
     clearDevicesError: (state) => { state.error = null },
   },
   extraReducers: (builder) => {
     builder
+      // Fetch all devices
       .addCase(fetchDevices.pending, (state) => { state.loading = true; state.error = null })
       .addCase(fetchDevices.fulfilled, (state, action) => { state.loading = false; state.devices = action.payload })
       .addCase(fetchDevices.rejected, (state, action) => { state.loading = false; state.error = action.payload })
-      .addCase(createDevice.pending, (state) => { state.loading = true; state.error = null })
-      .addCase(createDevice.fulfilled, (state, action) => {
-        state.loading = false
-        state.devices.push(action.payload)
-      })
-      .addCase(createDevice.rejected, (state, action) => { state.loading = false; state.error = action.payload })
-      .addCase(updateDevice.pending, (state) => { state.loading = true; state.error = null })
-      .addCase(updateDevice.fulfilled, (state, action) => {
-        state.loading = false
-        const index = state.devices.findIndex(d => d._id === action.payload._id)
-        if (index !== -1) state.devices[index] = action.payload
-      })
-      .addCase(updateDevice.rejected, (state, action) => { state.loading = false; state.error = action.payload })
-      .addCase(deleteDevice.pending, (state) => { state.loading = true; state.error = null })
-      .addCase(deleteDevice.fulfilled, (state, action) => {
-        state.loading = false
-        state.devices = state.devices.filter(d => d._id !== action.payload)
-      })
-      .addCase(deleteDevice.rejected, (state, action) => { state.loading = false; state.error = action.payload })
+
+      // Fetch unassigned (used by Promote modal)
       .addCase(fetchUnassignedDevices.pending, (state) => { state.unassignedLoading = true })
       .addCase(fetchUnassignedDevices.fulfilled, (state, action) => {
         state.unassignedLoading = false
@@ -539,12 +556,43 @@ const devicesSlice = createSlice({
         state.unassignedLoading = false
         state.error = action.payload
       })
-    },
+
+      // Create
+      .addCase(createDevice.pending, (state) => { state.loading = true; state.error = null })
+      .addCase(createDevice.fulfilled, (state, action) => {
+        state.loading = false
+        state.devices.push(action.payload)
+      })
+      .addCase(createDevice.rejected, (state, action) => { state.loading = false; state.error = action.payload })
+
+      // Update
+      .addCase(updateDevice.pending, (state) => { state.loading = true; state.error = null })
+      .addCase(updateDevice.fulfilled, (state, action) => {
+        state.loading = false
+        const index = state.devices.findIndex(d => d._id === action.payload._id)
+        if (index !== -1) state.devices[index] = action.payload
+      })
+      .addCase(updateDevice.rejected, (state, action) => { state.loading = false; state.error = action.payload })
+
+      // Delete
+      .addCase(deleteDevice.pending, (state) => { state.loading = true; state.error = null })
+      .addCase(deleteDevice.fulfilled, (state, action) => {
+        state.loading = false
+        state.devices = state.devices.filter(d => d._id !== action.payload)
+      })
+      .addCase(deleteDevice.rejected, (state, action) => { state.loading = false; state.error = action.payload })
+
+      // Pairing — unpair updates the local device
+      .addCase(unpairDevice.fulfilled, (state, action) => {
+        const index = state.devices.findIndex(d => d._id === action.payload.deviceId)
+        if (index !== -1) {
+          state.devices[index].isPaired = false
+          state.devices[index].pairedAt = null
+        }
+      })
+  },
 })
 
-
-
-// DEPARTMENTS SLICE
 const departmentSlice = createSlice({
   name: 'departments',
   initialState: { departments: [], loading: false, error: null },
@@ -563,7 +611,6 @@ const departmentSlice = createSlice({
   },
 })
 
-// USERS SLICE
 const usersSlice = createSlice({
   name: 'users',
   initialState: { users: [], loading: false, error: null },
@@ -575,6 +622,7 @@ const usersSlice = createSlice({
       .addCase(fetchUsers.pending, (state) => { state.loading = true; state.error = null })
       .addCase(fetchUsers.fulfilled, (state, action) => { state.loading = false; state.users = action.payload })
       .addCase(fetchUsers.rejected, (state, action) => { state.loading = false; state.error = action.payload })
+
       .addCase(updateUserPermissions.pending, (state) => { state.loading = true; state.error = null })
       .addCase(updateUserPermissions.fulfilled, (state, action) => {
         state.loading = false
@@ -582,6 +630,7 @@ const usersSlice = createSlice({
         if (index !== -1) state.users[index] = action.payload
       })
       .addCase(updateUserPermissions.rejected, (state, action) => { state.loading = false; state.error = action.payload })
+
       .addCase(updateUserRole.pending, (state) => { state.loading = true; state.error = null })
       .addCase(updateUserRole.fulfilled, (state, action) => {
         state.loading = false
@@ -593,6 +642,7 @@ const usersSlice = createSlice({
         }
       })
       .addCase(updateUserRole.rejected, (state, action) => { state.loading = false; state.error = action.payload })
+
       .addCase(promoteEmployee.pending, (state) => { state.loading = true; state.error = null })
       .addCase(promoteEmployee.fulfilled, (state, action) => {
         state.loading = false
@@ -604,6 +654,7 @@ const usersSlice = createSlice({
         }
       })
       .addCase(promoteEmployee.rejected, (state, action) => { state.loading = false; state.error = action.payload })
+
       .addCase(resetUserPassword.pending, (state) => { state.loading = true; state.error = null })
       .addCase(resetUserPassword.fulfilled, (state, action) => {
         state.loading = false
